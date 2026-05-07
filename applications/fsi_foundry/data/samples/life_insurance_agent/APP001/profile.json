@@ -1,13 +1,13 @@
 {
   "applicant_id": "APP001",
-  "name": "[name]",
+  "name": "Michael Torres",
   "age": 35,
   "life_stage": "family_building",
   "annual_income": 120000,
   "dependents": [
-    {"name": "[name]", "relationship": "spouse", "age": 33},
-    {"name": "[name]", "relationship": "child", "age": 5},
-    {"name": "[name]", "relationship": "child", "age": 2}
+    {"name": "Sarah Torres", "relationship": "spouse", "age": 33},
+    {"name": "Emma Torres", "relationship": "child", "age": 5},
+    {"name": "Lucas Torres", "relationship": "child", "age": 2}
   ],
   "existing_coverage": {
     "employer_group_life": 240000,

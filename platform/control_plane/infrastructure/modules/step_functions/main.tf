@@ -394,6 +394,8 @@ resource "aws_sfn_state_machine" "deployment" {
             { Name = "ENABLE_TRACING", "Value.$" = "$.parameters.ENABLE_TRACING", Type = "PLAINTEXT" },
             { Name = "LANGFUSE_HOST", "Value.$" = "$.parameters.LANGFUSE_HOST", Type = "PLAINTEXT" },
             { Name = "LANGFUSE_SECRET_NAME", "Value.$" = "$.parameters.LANGFUSE_SECRET_NAME", Type = "PLAINTEXT" },
+            { Name = "GUARDRAIL_ID", "Value.$" = "$.parameters.GUARDRAIL_ID", Type = "PLAINTEXT" },
+            { Name = "GUARDRAIL_VERSION", "Value.$" = "$.parameters.GUARDRAIL_VERSION", Type = "PLAINTEXT" },
             { Name = "SUBMISSION_ID", "Value.$" = "$.parameters.SUBMISSION_ID", Type = "PLAINTEXT" },
             { Name = "APP_FACTORY_TABLE_NAME", "Value.$" = "$.parameters.APP_FACTORY_TABLE_NAME", Type = "PLAINTEXT" },
             { Name = "ACTION", "Value.$" = "$.action", Type = "PLAINTEXT" }

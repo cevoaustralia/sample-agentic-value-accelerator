@@ -6,10 +6,10 @@
   "employee_count": 1200,
   "existing_products": ["business_checking", "commercial_lending"],
   "contact_info": {
-    "primary_contact": "[name]",
+    "primary_contact": "Robert Hartley",
     "title": "CFO",
-    "email": "[email]",
-    "phone": "[phone_number]"
+    "email": "r.hartley@meridiantech.com",
+    "phone": "+1-555-0142"
   },
   "engagement_history": [
     {"date": "2024-01-10", "type": "meeting", "notes": "Discussed treasury management needs"},

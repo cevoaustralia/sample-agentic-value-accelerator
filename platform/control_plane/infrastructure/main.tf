@@ -141,6 +141,8 @@ module "ecs" {
   frontier_agents_state_machine_arn = module.frontier_agents_pipeline.state_machine_arn
   app_factory_table_name            = module.dynamodb.app_factory_table_name
   app_factory_table_arn  = module.dynamodb.app_factory_table_arn
+  guardrails_table_name  = module.dynamodb.guardrails_table_name
+  guardrails_table_arn   = module.dynamodb.guardrails_table_arn
   cors_origins           = concat(["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"], ["https://${module.cloudfront.distribution_domain_name}"], var.domain_name != "" ? ["https://${var.domain_name}"] : [])
 
   tags = var.tags
@@ -161,6 +163,7 @@ module "api_gateway" {
   environment        = var.environment
   vpc_id             = local.vpc_id
   private_subnet_ids = local.private_subnet_ids
+  public_subnet_ids  = local.public_subnet_ids
 
   # ECS service
   ecs_service_name      = module.ecs.service_name

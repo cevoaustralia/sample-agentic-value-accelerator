@@ -89,6 +89,11 @@ class Settings(BaseSettings):
     langfuse_secret_name: Optional[str] = None  # AWS Secrets Manager secret with API keys
     langfuse_prompt_name: Optional[str] = None
 
+    # Bedrock Guardrails Configuration
+    # Injected from control plane deployment parameters
+    guardrail_id: Optional[str] = None
+    guardrail_version: Optional[str] = None
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

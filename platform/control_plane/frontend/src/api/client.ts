@@ -13,6 +13,10 @@ import type {
   DeploymentStatusResponse,
   TestStartResponse,
   TestDeploymentResponse,
+  GuardrailTemplate,
+  GuardrailTemplateCreate,
+  GuardrailPreset,
+  GuardrailMetrics,
 } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -357,6 +361,50 @@ export interface CodeCommitRepo {
 export const codecommitApi = {
   listRepositories: async (): Promise<CodeCommitRepo[]> => {
     const response = await client.get<CodeCommitRepo[]>('/api/v1/codecommit/repositories');
+    return response.data;
+  },
+};
+
+// Guardrails API
+export const guardrailsApi = {
+  list: async (status?: string): Promise<GuardrailTemplate[]> => {
+    const params = status ? { status } : {};
+    const response = await client.get<GuardrailTemplate[]>('/api/v1/guardrails', { params });
+    return response.data;
+  },
+
+  get: async (templateId: string): Promise<GuardrailTemplate> => {
+    const response = await client.get<GuardrailTemplate>(`/api/v1/guardrails/${templateId}`);
+    return response.data;
+  },
+
+  create: async (data: GuardrailTemplateCreate): Promise<GuardrailTemplate> => {
+    const response = await client.post<GuardrailTemplate>('/api/v1/guardrails', data);
+    return response.data;
+  },
+
+  update: async (templateId: string, data: Partial<GuardrailTemplateCreate>): Promise<GuardrailTemplate> => {
+    const response = await client.put<GuardrailTemplate>(`/api/v1/guardrails/${templateId}`, data);
+    return response.data;
+  },
+
+  delete: async (templateId: string): Promise<GuardrailTemplate> => {
+    const response = await client.delete<GuardrailTemplate>(`/api/v1/guardrails/${templateId}`);
+    return response.data;
+  },
+
+  publish: async (templateId: string): Promise<GuardrailTemplate> => {
+    const response = await client.post<GuardrailTemplate>(`/api/v1/guardrails/${templateId}/publish`);
+    return response.data;
+  },
+
+  getMetrics: async (templateId: string, hours: number = 24): Promise<GuardrailMetrics> => {
+    const response = await client.get<GuardrailMetrics>(`/api/v1/guardrails/${templateId}/metrics`, { params: { hours } });
+    return response.data;
+  },
+
+  getPresets: async (): Promise<GuardrailPreset[]> => {
+    const response = await client.get<GuardrailPreset[]>('/api/v1/guardrails/presets');
     return response.data;
   },
 };

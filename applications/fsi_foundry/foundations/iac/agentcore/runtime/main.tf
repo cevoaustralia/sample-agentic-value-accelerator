@@ -131,6 +131,8 @@ resource "aws_cloudformation_stack" "agentcore_runtime" {
     EnableTracing    = var.enable_tracing
     LangfuseHost     = var.langfuse_host
     LangfuseSecretName = var.langfuse_secret_name
+    GuardrailId      = var.guardrail_id
+    GuardrailVersion = var.guardrail_version
   }
 
   capabilities = ["CAPABILITY_IAM"]

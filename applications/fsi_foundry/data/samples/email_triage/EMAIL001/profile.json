@@ -1,6 +1,6 @@
 {
   "entity_id": "EMAIL001",
-  "sender": "[name]@hedgefund.example.com",
+  "sender": "K. Nakamura@hedgefund.example.com",
   "sender_role": "Portfolio Manager",
   "recipient": "trading-desk@bank.example.com",
   "subject": "Urgent: Rebalance Request - Tech Sector Exposure",

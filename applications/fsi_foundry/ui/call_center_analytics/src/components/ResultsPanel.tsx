@@ -3,6 +3,47 @@ import { useState } from 'react';
 import type { RuntimeConfig } from '../config';
 import type { AnalyticsResponse } from '../types';
 
+/* ---- Markdown Block ---- */
+
+function MarkdownBlock({ content }: { content: string }) {
+  if (!content) return null;
+  const lines = content.split('\n');
+  const elements: React.ReactNode[] = [];
+
+  const formatInline = (text: string) => {
+    return text
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/`(.+?)`/g, '<code class="px-1 py-0.5 rounded text-xs" style="background:var(--bg-secondary)">$1</code>');
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.startsWith('### ')) {
+      elements.push(<h4 key={i} className="text-sm font-bold mt-4 mb-1" style={{ color: 'var(--text-primary)' }} dangerouslySetInnerHTML={{ __html: formatInline(line.slice(4)) }} />);
+    } else if (line.startsWith('## ')) {
+      elements.push(<h3 key={i} className="text-sm font-bold mt-5 mb-2" style={{ color: 'var(--text-primary)' }} dangerouslySetInnerHTML={{ __html: formatInline(line.slice(3)) }} />);
+    } else if (line.startsWith('# ')) {
+      elements.push(<h2 key={i} className="text-base font-bold mt-5 mb-2" style={{ color: 'var(--text-primary)' }} dangerouslySetInnerHTML={{ __html: formatInline(line.slice(2)) }} />);
+    } else if (line.startsWith('- ') || line.startsWith('* ')) {
+      elements.push(<li key={i} className="text-sm ml-4 mb-0.5" style={{ color: 'var(--text-secondary)' }} dangerouslySetInnerHTML={{ __html: formatInline(line.slice(2)) }} />);
+    } else if (/^\d+\.\s/.test(line)) {
+      elements.push(<li key={i} className="text-sm ml-4 mb-0.5 list-decimal" style={{ color: 'var(--text-secondary)' }} dangerouslySetInnerHTML={{ __html: formatInline(line.replace(/^\d+\.\s/, '')) }} />);
+    } else if (line.startsWith('---')) {
+      elements.push(<hr key={i} className="my-3" style={{ borderColor: 'var(--border)' }} />);
+    } else if (line.startsWith('|')) {
+      // Skip table lines — render as text
+      elements.push(<p key={i} className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>{line}</p>);
+    } else if (line.trim() === '') {
+      elements.push(<div key={i} className="h-2" />);
+    } else {
+      elements.push(<p key={i} className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }} dangerouslySetInnerHTML={{ __html: formatInline(line) }} />);
+    }
+  }
+
+  return <div>{elements}</div>;
+}
+
 /* ---- Score Bar ---- */
 
 function ScoreBar({ value, max, color, label }: { value: number; max: number; color: string; label: string }) {
@@ -377,12 +418,7 @@ function ResultsPanelInternal({
                       {agentMeta.name}
                     </h4>
                   </div>
-                  <pre
-                    className="text-xs whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto"
-                    style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)' }}
-                  >
-                    {content}
-                  </pre>
+                  <MarkdownBlock content={content} />
                 </div>
               );
             })}

@@ -72,8 +72,12 @@ class LangGraphAgent(ABC):
             setup_tracing()
         self._langfuse_handler = get_langfuse_callback_handler() if self._enable_tracing else None
     
-    def _create_llm(self) -> ChatBedrockConverse:
-        """Create the Bedrock LLM instance using the Converse API for native tool calling."""
+    def _create_llm(self, disable_guardrail: bool = False) -> ChatBedrockConverse:
+        """Create the Bedrock LLM instance using the Converse API for native tool calling.
+
+        Guardrails are NOT injected into LLM calls. They are applied as
+        post-processing on the final response via apply_guardrail_to_response().
+        """
         return ChatBedrockConverse(
             model_id=self.config.model_id or settings.bedrock_model_id or settings.effective_bedrock_model_id,
             region_name=settings.aws_region,
@@ -91,8 +95,14 @@ class LangGraphAgent(ABC):
         ])
     
     def _create_executor(self) -> AgentExecutor:
-        """Create the agent executor with LLM, tools, and prompt."""
-        llm = self._create_llm()
+        """Create the agent executor with LLM, tools, and prompt.
+
+        Guardrails are disabled for agent executors because they use tool calling.
+        Bedrock guardrails applied to structured tool-call outputs corrupt the JSON,
+        causing parse errors and iteration exhaustion. Guardrails are instead applied
+        at the orchestrator level on the final user-facing text output.
+        """
+        llm = self._create_llm(disable_guardrail=True)
         prompt = self._create_prompt()
         agent = create_tool_calling_agent(llm, self.config.tools, prompt)
         

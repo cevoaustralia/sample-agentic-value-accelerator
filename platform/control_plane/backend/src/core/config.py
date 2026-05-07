@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     # AWS
     AWS_REGION: str = Field(default="us-east-1")
     DEPLOYMENTS_TABLE_NAME: str = Field(default="fsi-control-plane-deployments")
+    GUARDRAILS_TABLE_NAME: str = Field(default="fsi-control-plane-guardrails")
     APP_FACTORY_TABLE_NAME: str = Field(default="fsi-control-plane-app-factory")
     S3_DELIVERY_BUCKET: str = Field(default="fsi-control-plane-deployments")
     S3_BUCKET_NAME: str = Field(

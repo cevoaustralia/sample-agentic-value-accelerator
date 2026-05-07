@@ -75,7 +75,9 @@ function AuthGate() {
         <Route path="/applications/my-apps" element={<MyApps />} />
         <Route path="/templates" element={<TemplateCatalog />} />
         <Route path="/observability" element={<Observability />} />
-        <Route path="/secure/guardrails" element={<Guardrails />} />
+        <Route path="/secure/guardrails" element={<Guardrails initialTab="templates" />} />
+        <Route path="/secure/guardrails/create" element={<Guardrails initialTab="builder" />} />
+        <Route path="/secure/guardrails/observability" element={<Guardrails initialTab="observability" />} />
         <Route path="/secure/policy" element={<Policy />} />
         <Route path="/deployments" element={<DeploymentList />} />
         <Route path="/deployments/create" element={<DeploymentCreate />} />

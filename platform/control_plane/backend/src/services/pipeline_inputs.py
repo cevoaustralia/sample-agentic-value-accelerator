@@ -33,6 +33,8 @@ class PipelineInput:
     enable_tracing: str = "false"
     langfuse_host: str = ""
     langfuse_secret_name: str = ""
+    guardrail_id: str = ""
+    guardrail_version: str = ""
     submission_id: str = ""
     app_factory_table_name: str = ""
 
@@ -46,6 +48,8 @@ class PipelineInput:
             "ENABLE_TRACING":         d["enable_tracing"],
             "LANGFUSE_HOST":          d["langfuse_host"],
             "LANGFUSE_SECRET_NAME":   d["langfuse_secret_name"],
+            "GUARDRAIL_ID":           d["guardrail_id"],
+            "GUARDRAIL_VERSION":      d["guardrail_version"],
             "SUBMISSION_ID":          d["submission_id"],
             "APP_FACTORY_TABLE_NAME": d["app_factory_table_name"],
         }
@@ -67,6 +71,8 @@ class PipelineInput:
             "enable_tracing":         p.get("ENABLE_TRACING", "false"),
             "langfuse_host":          p.get("LANGFUSE_HOST", ""),
             "langfuse_secret_name":   p.get("LANGFUSE_SECRET_NAME", ""),
+            "guardrail_id":           p.get("GUARDRAIL_ID", ""),
+            "guardrail_version":      p.get("GUARDRAIL_VERSION", ""),
             "submission_id":          p.get("SUBMISSION_ID", ""),
             "app_factory_table_name": p.get("APP_FACTORY_TABLE_NAME", ""),
         }

@@ -1,6 +1,6 @@
 {
   "entity_id": "TRADE001",
-  "trader_name": "[name]",
+  "trader_name": "Marcus Webb",
   "desk": "Equity Trading",
   "asset_classes": ["equities", "equity_options", "etfs"],
   "strategy_type": "systematic_momentum",

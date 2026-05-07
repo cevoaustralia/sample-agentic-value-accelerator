@@ -189,3 +189,47 @@ resource "aws_dynamodb_table" "deployments" {
     Name = "${var.name_prefix}-deployments"
   })
 }
+
+# ============================================================================
+# Guardrails Table
+# ============================================================================
+
+resource "aws_dynamodb_table" "guardrails" {
+  name         = "${var.name_prefix}-guardrails"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "pk"
+  range_key    = "sk"
+
+  attribute {
+    name = "pk"
+    type = "S"
+  }
+
+  attribute {
+    name = "sk"
+    type = "S"
+  }
+
+  attribute {
+    name = "status"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "status-index"
+    hash_key        = "status"
+    projection_type = "ALL"
+  }
+
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-guardrails"
+  })
+}

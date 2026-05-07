@@ -150,14 +150,16 @@ phases:
         data_path     = "/tmp/workspace/data/samples"
         TFVARS
               cat > /tmp/workspace/runtime/deploy.auto.tfvars << TFVARS
-        aws_region           = "$AWS_TARGET_REGION"
-        use_case_id          = "${USE_CASE_ID:-unknown}"
-        use_case_name        = "${USE_CASE_ID:-unknown}"
-        framework            = "${FRAMEWORK:-strands}"
-        image_tag            = "${FRAMEWORK:-strands}-latest"
-        enable_tracing       = "${ENABLE_TRACING:-false}"
-        langfuse_host        = "${LANGFUSE_HOST:-}"
+        aws_region = "$AWS_TARGET_REGION"
+        use_case_id = "${USE_CASE_ID:-unknown}"
+        use_case_name = "${USE_CASE_ID:-unknown}"
+        framework = "${FRAMEWORK:-strands}"
+        image_tag = "${FRAMEWORK:-strands}-latest"
+        enable_tracing = "${ENABLE_TRACING:-false}"
+        langfuse_host = "${LANGFUSE_HOST:-}"
         langfuse_secret_name = "${LANGFUSE_SECRET_NAME:-}"
+        guardrail_id = "${GUARDRAIL_ID:-}"
+        guardrail_version = "${GUARDRAIL_VERSION:-}"
         TFVARS
               echo "=== Stage 1: Infrastructure ==="
               cd /tmp/workspace/infra

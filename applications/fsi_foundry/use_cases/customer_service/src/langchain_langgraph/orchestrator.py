@@ -7,7 +7,8 @@ for comprehensive customer service resolution in banking.
 
 import json
 import uuid
-from typing import TypedDict, Annotated, Literal
+import logging
+from typing import Any, TypedDict, Annotated, Literal
 from datetime import datetime
 
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
@@ -15,6 +16,85 @@ from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 
 from base.langgraph import LangGraphOrchestrator
+
+_guardrail_logger = logging.getLogger(__name__)
+
+
+async def apply_guardrail_to_response(response_dict: dict) -> dict:
+    """Apply Bedrock Guardrail as post-processing to all text fields in the response.
+
+    This is defined inline to avoid import issues in AgentCore's runtime environment.
+    Recursively walks the response dict and applies the guardrail to all strings > 50 chars.
+    Returns the original dict unchanged if no guardrail is configured or on error.
+    """
+    from config.settings import settings
+
+    if not settings.guardrail_id:
+        return response_dict
+
+    try:
+        import boto3
+        client = boto3.client('bedrock-runtime', region_name=settings.aws_region)
+    except Exception as e:
+        _guardrail_logger.warning("guardrail_client_init_failed: %s", str(e))
+        return response_dict
+
+    # CloudWatch client for metrics
+    try:
+        cw_client = boto3.client('cloudwatch', region_name=settings.aws_region)
+    except Exception:
+        cw_client = None
+
+    def _emit_metric(action: str):
+        if not cw_client:
+            _guardrail_logger.warning("guardrail_metrics: no cloudwatch client")
+            return
+        try:
+            metrics = [
+                {"MetricName": "Invocations", "Value": 1, "Unit": "Count"},
+            ]
+            if action == "GUARDRAIL_INTERVENED":
+                metrics.append({"MetricName": "InvocationsBlocked", "Value": 1, "Unit": "Count"})
+            cw_client.put_metric_data(
+                Namespace="AWS/Bedrock/Guardrails",
+                MetricData=[
+                    {**m, "Dimensions": [{"Name": "GuardrailId", "Value": settings.guardrail_id}]}
+                    for m in metrics
+                ],
+            )
+            _guardrail_logger.info("guardrail_metrics_emitted: action=%s guardrail=%s", action, settings.guardrail_id)
+        except Exception as e:
+            _guardrail_logger.error("guardrail_metrics_failed: %s", str(e))
+
+    def _apply(text: str) -> str:
+        if not text or len(text) < 50:
+            return text
+        try:
+            resp = client.apply_guardrail(
+                guardrailIdentifier=settings.guardrail_id,
+                guardrailVersion=settings.guardrail_version or "DRAFT",
+                source="OUTPUT",
+                content=[{"text": {"text": text}}],
+            )
+            _emit_metric(resp.get("action", "NONE"))
+            if resp.get("action") == "GUARDRAIL_INTERVENED":
+                outputs = resp.get("outputs", [])
+                if outputs:
+                    return outputs[0].get("text", text)
+        except Exception as ex:
+            _guardrail_logger.warning("apply_guardrail failed for text chunk: %s", str(ex))
+        return text
+
+    def _walk(obj: Any) -> Any:
+        if isinstance(obj, str):
+            return _apply(obj)
+        if isinstance(obj, dict):
+            return {k: _walk(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_walk(item) for item in obj]
+        return obj
+
+    return _walk(response_dict)
 from use_cases.customer_service.agents import InquiryHandler, TransactionSpecialist, ProductAdvisor
 from use_cases.customer_service.agents.inquiry_handler import handle_inquiry
 from use_cases.customer_service.agents.transaction_specialist import investigate_transaction
@@ -252,7 +332,7 @@ Be concise but thorough. Your summary will be used by customer service represent
 {chr(10).join(sections)}"""
 
         try:
-            llm = self._create_llm()
+            llm = self._create_llm(disable_guardrail=True)
             structured_llm = llm.with_structured_output(CustomerServiceSynthesisSchema)
             result = await structured_llm.ainvoke(prompt)
             structured = result.model_dump() if hasattr(result, "model_dump") else result
@@ -305,8 +385,30 @@ async def run_customer_service(request):
     except Exception:
         summary = str(final_state.get("final_summary", summary))
 
+    raw_analysis = {
+        "inquiry_result": final_state.get("inquiry_handler_result"),
+        "transaction_result": final_state.get("transaction_specialist_result"),
+        "product_result": final_state.get("product_advisor_result"),
+    }
+
+    # Apply guardrail post-processing to all user-facing text fields
+    guardrailed = await apply_guardrail_to_response({
+        "summary": summary,
+        "recommendations": recommendations,
+        "raw_analysis": raw_analysis,
+        "resolution_actions": resolution.actions_taken if resolution else [],
+    })
+    summary = guardrailed["summary"]
+    recommendations = guardrailed["recommendations"]
+    raw_analysis = guardrailed["raw_analysis"]
+    if resolution and guardrailed.get("resolution_actions"):
+        resolution = ResolutionDetail(
+            status=resolution.status,
+            actions_taken=guardrailed["resolution_actions"],
+            follow_up_required=resolution.follow_up_required)
+
     return ServiceResponse(
         customer_id=request.customer_id, service_id=str(uuid.uuid4()), timestamp=datetime.utcnow(), resolution=resolution, recommendations=recommendations,
         summary=summary,
-        raw_analysis={"inquiry_result": final_state.get("inquiry_handler_result"), "transaction_result": final_state.get("transaction_specialist_result"), "product_result": final_state.get("product_advisor_result")},
+        raw_analysis=raw_analysis,
     )

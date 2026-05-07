@@ -104,7 +104,9 @@ resource "aws_iam_role_policy" "ecs_task_dynamodb" {
           "${var.deployments_table_arn}/index/*",
           "${var.deployment_metadata_table_arn}/index/*",
           var.app_factory_table_arn,
-          "${var.app_factory_table_arn}/index/*"
+          "${var.app_factory_table_arn}/index/*",
+          var.guardrails_table_arn,
+          "${var.guardrails_table_arn}/index/*"
         ]
       }
     ]
@@ -180,6 +182,37 @@ resource "aws_iam_role_policy" "ecs_task_logs" {
           "logs:DescribeLogStreams"
         ]
         Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/*"
+      }
+    ]
+  })
+}
+
+# Policy for Bedrock Guardrails and CloudWatch Metrics
+resource "aws_iam_role_policy" "ecs_task_bedrock_guardrails" {
+  name = "bedrock-guardrails-access"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "bedrock:CreateGuardrail",
+          "bedrock:UpdateGuardrail",
+          "bedrock:DeleteGuardrail",
+          "bedrock:GetGuardrail",
+          "bedrock:ListGuardrails",
+          "bedrock:CreateGuardrailVersion"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:GetMetricData"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -266,7 +299,7 @@ resource "aws_lb" "main" {
   internal           = true
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
-  subnets            = var.private_subnet_ids
+  subnets            = var.public_subnet_ids
 
   enable_deletion_protection = false
   enable_http2               = true
@@ -375,6 +408,10 @@ resource "aws_ecs_task_definition" "main" {
           value = var.deployments_table_name
         },
         {
+          name  = "GUARDRAILS_TABLE_NAME"
+          value = var.guardrails_table_name
+        },
+        {
           name  = "STATE_MACHINE_ARN"
           value = var.state_machine_arn
         },
@@ -436,9 +473,9 @@ resource "aws_ecs_service" "main" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = var.private_subnet_ids
+    subnets          = var.public_subnet_ids
     security_groups  = [aws_security_group.ecs_tasks.id]
-    assign_public_ip = false
+    assign_public_ip = true
   }
 
   load_balancer {

@@ -8,6 +8,7 @@ Subclasses define agents and build_graph(); base class handles execution and com
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Type, TypeVar, Callable
 import asyncio
+import logging
 
 from langgraph.graph import StateGraph, END
 from langchain_aws import ChatBedrockConverse
@@ -16,6 +17,8 @@ from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from base.types import OrchestratorConfig, ExecutionResult
 from base.langgraph.agent import LangGraphAgent
 from config.settings import settings
+
+logger = logging.getLogger(__name__)
 
 StateT = TypeVar('StateT', bound=dict)
 
@@ -70,8 +73,14 @@ class LangGraphOrchestrator(ABC):
         )
         self._graph = None
     
-    def _create_llm(self) -> ChatBedrockConverse:
-        """Create LLM for synthesis and routing decisions using the Converse API."""
+    def _create_llm(self, disable_guardrail: bool = False) -> ChatBedrockConverse:
+        """Create LLM for synthesis and routing decisions using the Converse API.
+
+        Guardrails are NOT injected into LLM calls. They are applied as
+        post-processing via apply_guardrail_to_response() on the final output.
+        Injecting guardrails into Converse calls corrupts tool-calling JSON
+        and structured output schemas.
+        """
         return ChatBedrockConverse(
             model_id=self.config.model_id or settings.bedrock_model_id or settings.effective_bedrock_model_id,
             region_name=settings.aws_region,
@@ -220,25 +229,57 @@ class LangGraphOrchestrator(ABC):
             )
         return content
     
+    async def apply_guardrail(self, text: str) -> str:
+        """
+        Apply Bedrock Guardrail to text as a post-processing step.
+
+        Since guardrails are disabled during agent tool-calling and structured
+        synthesis (they corrupt JSON), this method applies the guardrail to
+        the final user-facing text output.
+
+        Returns the original text if no guardrail is configured or on error.
+        """
+        if not settings.guardrail_id or not text:
+            return text
+
+        try:
+            import boto3
+            client = boto3.client('bedrock-runtime', region_name=settings.aws_region)
+            response = client.apply_guardrail(
+                guardrailIdentifier=settings.guardrail_id,
+                guardrailVersion=settings.guardrail_version or "DRAFT",
+                source="OUTPUT",
+                content=[{"text": {"text": text}}],
+            )
+            action = response.get("action", "NONE")
+            if action == "GUARDRAIL_INTERVENED":
+                outputs = response.get("outputs", [])
+                if outputs:
+                    return outputs[0].get("text", text)
+            return text
+        except Exception as e:
+            logger.warning("apply_guardrail failed, returning original text: %s", str(e))
+            return text
+
     def run(self, initial_state: StateT) -> StateT:
         """
         Synchronous execution of the workflow.
-        
+
         Args:
             initial_state: Initial state to start workflow
-            
+
         Returns:
             Final state after workflow completion
         """
         return self.graph.invoke(initial_state)
-    
+
     async def arun(self, initial_state: StateT) -> StateT:
         """
         Asynchronous execution of the workflow.
-        
+
         Args:
             initial_state: Initial state to start workflow
-            
+
         Returns:
             Final state after workflow completion
         """

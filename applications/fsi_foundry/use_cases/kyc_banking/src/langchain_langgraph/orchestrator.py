@@ -220,7 +220,7 @@ Be concise but thorough. Your summary will be used by decision-makers."""
 Fill in all fields based on the agent assessments above. Use actual findings, scores, and details — not generic defaults."""
 
         try:
-            llm = self._create_llm()
+            llm = self._create_llm(disable_guardrail=True)
             structured_llm = llm.with_structured_output(KYCSynthesisSchema)
             result = await structured_llm.ainvoke(synthesis_prompt)
             structured = result.model_dump() if hasattr(result, "model_dump") else result

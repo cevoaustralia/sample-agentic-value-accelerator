@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { applicationsApi, codecommitApi, type CodeCommitRepo } from '../api/client';
 import type { AppUseCase } from '../types';
 import LoadingSpinner from './LoadingSpinner';
+import GuardrailSelector from './guardrails/GuardrailSelector';
 
 type DeploySource = 's3' | 'codecommit';
 
@@ -16,6 +17,8 @@ export default function AppDeployCreate() {
   const [deployName, setDeployName] = useState('');
   const [deploying, setDeploying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [guardrailId, setGuardrailId] = useState<string | undefined>();
+  const [guardrailVersion, setGuardrailVersion] = useState<string | undefined>();
 
   // CodeCommit state
   const [repos, setRepos] = useState<CodeCommitRepo[]>([]);
@@ -78,6 +81,7 @@ export default function AppDeployCreate() {
           framework,
           deployment_pattern: 'agentcore',
           aws_region: region,
+          ...(guardrailId ? { guardrail_id: guardrailId, guardrail_version: guardrailVersion } : {}),
         });
       } else {
         result = await applicationsApi.deployFoundry({
@@ -86,6 +90,7 @@ export default function AppDeployCreate() {
           framework,
           deployment_pattern: 'agentcore',
           aws_region: region,
+          ...(guardrailId ? { guardrail_id: guardrailId, guardrail_version: guardrailVersion } : {}),
         });
       }
       navigate(`/deployments/${result.deployment_id}`);
@@ -229,6 +234,15 @@ export default function AppDeployCreate() {
             <option value="us-west-2">US West (Oregon)</option>
           </select>
         </div>
+
+        {useCaseId === 'customer_service' && (
+        <div className="pt-2 border-t border-slate-100">
+          <GuardrailSelector
+            value={guardrailId}
+            onChange={(id, version) => { setGuardrailId(id); setGuardrailVersion(version); }}
+          />
+        </div>
+        )}
 
         <button
           onClick={handleDeploy}

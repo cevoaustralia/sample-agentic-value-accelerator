@@ -72,12 +72,18 @@ class StrandsAgent(ABC):
     
     def _create_model(self) -> BedrockModel:
         """Create the Strands Bedrock model."""
-        return BedrockModel(
+        kwargs = dict(
             model_id=self.config.model_id or settings.effective_bedrock_model_id,
             region_name=settings.aws_region,
             temperature=self.config.model_kwargs.get("temperature", 0.1),
             max_tokens=self.config.model_kwargs.get("max_tokens", 16384),
         )
+        if settings.guardrail_id:
+            kwargs["guardrail_config"] = {
+                "guardrailIdentifier": settings.guardrail_id,
+                "guardrailVersion": settings.guardrail_version or "DRAFT",
+            }
+        return BedrockModel(**kwargs)
     
     def _create_agent(self) -> Agent:
         """Create the Strands agent with optional trace attributes."""

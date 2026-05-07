@@ -18,6 +18,11 @@ variable "private_subnet_ids" {
   type        = list(string)
 }
 
+variable "public_subnet_ids" {
+  description = "List of public subnet IDs for VPC link (same AZs as ALB)"
+  type        = list(string)
+}
+
 variable "ecs_service_name" {
   description = "ECS service name"
   type        = string

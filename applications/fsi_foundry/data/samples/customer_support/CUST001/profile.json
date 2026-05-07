@@ -4,7 +4,7 @@
   "account_type": "premium_checking",
   "products": ["checking", "savings", "credit_card"],
   "contact_info": {
-    "email": "[email]",
+    "email": "james.park@email.com",
     "phone": "[phone_number]"
   },
   "account_status": "active",
