@@ -121,7 +121,7 @@ const ConfigManager: React.FC = () => {
 
   const resetToDefault = () => {
     const defaultConfig = {
-      API_BASE_URL: 'https://<api-id>.execute-api.us-east-2.amazonaws.com/test/',
+      API_BASE_URL: 'https://<api-id>.execute-api.<region>.amazonaws.com/<stage>/',
       ENABLE_API_CALLS: true,
       DEV_SETTINGS: {
         LOG_API_CALLS: true,

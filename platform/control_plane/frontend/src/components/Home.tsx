@@ -12,7 +12,7 @@ export default function Home() {
       </div>
 
       {/* 2x2 Quadrant Grid */}
-      <div className="grid grid-cols-5 gap-5 w-full max-w-6xl animate-fade-in stagger-1" style={{ gridTemplateRows: 'minmax(380px, 1fr) minmax(260px, auto)' }}>
+      <div className="grid grid-cols-6 gap-5 w-full max-w-6xl animate-fade-in stagger-1" style={{ gridTemplateRows: 'minmax(380px, 1fr) minmax(260px, auto)' }}>
 
         {/* ── Q1: PLAN ── */}
         <div className="col-span-2 flex flex-col overflow-hidden">
@@ -40,58 +40,83 @@ export default function Home() {
         </div>
 
         {/* ── Q2: BUILD ── */}
-        <div className="col-span-3 flex flex-col overflow-hidden">
+        <div className="col-span-4 flex flex-col overflow-hidden">
           <div className="flex items-center gap-2.5 mb-2.5 flex-shrink-0">
             <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
               <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" /></svg>
             </div>
             <h2 className="text-lg font-bold tracking-tight" style={{ backgroundImage: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 40%, #818cf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }}>Build</h2>
           </div>
-          <div className="grid grid-cols-2 gap-3 flex-1">
-            <div onClick={() => navigate('/applications')}
-              className="group bg-white/70 backdrop-blur-sm rounded-xl home-card cursor-pointer flex flex-col overflow-hidden">
-              <div className="flex-1 relative bg-gradient-to-br from-blue-600 to-indigo-700 overflow-hidden min-h-0">
-                <img src="/images/foundry-hero.png" alt="" className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-lighten" />
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/40 via-transparent to-indigo-700/50 pointer-events-none" />
-                <div className="absolute top-3 left-3">
-                  <span className="text-[9px] font-bold text-white/90 bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-full">4 options</span>
+          <div className="flex flex-col gap-3 flex-1 min-h-0">
+            <div className="grid grid-cols-2 gap-3 flex-1 min-h-0">
+              <div onClick={() => navigate('/applications')}
+                className="group bg-white/70 backdrop-blur-sm rounded-xl home-card cursor-pointer flex flex-col overflow-hidden">
+                <div className="flex-1 relative bg-gradient-to-br from-blue-600 to-indigo-700 overflow-hidden min-h-0">
+                  <img src="/images/foundry-hero.png" alt="" className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-lighten" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/40 via-transparent to-indigo-700/50 pointer-events-none" />
+                  <div className="absolute top-3 left-3">
+                    <span className="text-[9px] font-bold text-white/90 bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-full">4 options</span>
+                  </div>
+                </div>
+                <div className="p-4 flex-shrink-0 min-h-[132px]">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-base font-semibold text-slate-900 group-hover:text-blue-900 transition-colors">Applications</h3>
+                    <svg className="w-4 h-4 text-slate-300 group-hover:text-blue-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" /></svg>
+                  </div>
+                  <p className="text-xs text-slate-500 leading-relaxed">FSI Foundry, Reference Implementations, Templates, and App Factory — build and deploy agentic applications.</p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {['FSI Foundry', 'Ref Apps', 'Templates', 'App Factory'].map(t => (
+                      <span key={t} className="text-[8px] font-medium text-blue-500/80 bg-blue-50 px-1.5 py-0.5 rounded-full">{t}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div className="p-4 flex-shrink-0">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-base font-semibold text-slate-900 group-hover:text-blue-900 transition-colors">Applications</h3>
-                  <svg className="w-4 h-4 text-slate-300 group-hover:text-blue-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" /></svg>
+
+              <div onClick={() => navigate('/aaas')}
+                className="group bg-white/70 backdrop-blur-sm rounded-xl home-card cursor-pointer flex flex-col overflow-hidden">
+                <div className="flex-1 relative bg-gradient-to-br from-violet-600 to-pink-500 overflow-hidden min-h-0">
+                  <img src="/images/refimpl-hero.png" alt="" className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-lighten" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-600/40 via-transparent to-pink-500/50 pointer-events-none" />
+                  <div className="absolute top-3 left-3">
+                    <span className="text-[9px] font-bold text-white/90 bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-full">Autonomous</span>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-500 leading-relaxed">FSI Foundry, Reference Implementations, Templates, and App Factory — build and deploy agentic applications.</p>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {['FSI Foundry', 'Ref Apps', 'Templates', 'App Factory'].map(t => (
-                    <span key={t} className="text-[8px] font-medium text-blue-500/80 bg-blue-50 px-1.5 py-0.5 rounded-full">{t}</span>
-                  ))}
+                <div className="p-4 flex-shrink-0 min-h-[132px]">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-base font-semibold text-slate-900 group-hover:text-orange-900 transition-colors">Agent-as-a-Service</h3>
+                    <svg className="w-4 h-4 text-slate-300 group-hover:text-orange-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" /></svg>
+                  </div>
+                  <p className="text-xs text-slate-500 leading-relaxed">Managed AWS Frontier Agents (DevOps, Security, Kiro) and Custom Agents you build and deploy on Bedrock AgentCore.</p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {['AWS Frontier Agents', 'Custom Agents'].map(t => (
+                      <span key={t} className="text-[8px] font-medium text-orange-500/80 bg-orange-50 px-1.5 py-0.5 rounded-full">{t}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div onClick={() => navigate('/aaas')}
-              className="group bg-white/70 backdrop-blur-sm rounded-xl home-card cursor-pointer flex flex-col overflow-hidden">
-              <div className="flex-1 relative bg-gradient-to-br from-violet-600 to-pink-500 overflow-hidden min-h-0">
-                <img src="/images/refimpl-hero.png" alt="" className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-lighten" />
-                <div className="absolute inset-0 bg-gradient-to-br from-violet-600/40 via-transparent to-pink-500/50 pointer-events-none" />
-                <div className="absolute top-3 left-3">
-                  <span className="text-[9px] font-bold text-white/90 bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-full">Autonomous</span>
-                </div>
+            <div onClick={() => navigate('/capabilities')}
+              className="group relative bg-white/70 backdrop-blur-sm rounded-xl home-card cursor-pointer p-4 flex items-center gap-4 overflow-hidden flex-shrink-0">
+              <div className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full opacity-[0.1]" style={{ background: 'radial-gradient(circle, #14b8a6, transparent 70%)' }} />
+              <div className="w-14 h-14 rounded-2xl bg-teal-50 flex items-center justify-center flex-shrink-0 group-hover:bg-teal-100 transition-colors">
+                <svg className="w-7 h-7 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085" />
+                </svg>
               </div>
-              <div className="p-4 flex-shrink-0">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-base font-semibold text-slate-900 group-hover:text-orange-900 transition-colors">Agent-as-a-Service</h3>
-                  <svg className="w-4 h-4 text-slate-300 group-hover:text-orange-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" /></svg>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-lg font-semibold text-slate-900 group-hover:text-teal-900 transition-colors">Capabilities</h3>
+                  <span className="text-[9px] font-bold text-teal-600/80 bg-teal-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Building Blocks</span>
                 </div>
-                <p className="text-xs text-slate-500 leading-relaxed">Managed AWS Frontier Agents (DevOps, Security, Kiro) and Custom Agents you build and deploy on Bedrock AgentCore.</p>
+                <p className="text-sm text-slate-500 leading-relaxed">The composable building blocks agents use at runtime — tools to call, knowledge to read, and prompts to guide.</p>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {['AWS Frontier Agents', 'Custom Agents'].map(t => (
-                    <span key={t} className="text-[8px] font-medium text-orange-500/80 bg-orange-50 px-1.5 py-0.5 rounded-full">{t}</span>
+                  {['Tools', 'Knowledge', 'Prompts'].map(t => (
+                    <span key={t} className="text-[9px] font-medium text-teal-600/80 bg-teal-50 px-2 py-0.5 rounded-full">{t}</span>
                   ))}
                 </div>
               </div>
+              <svg className="w-5 h-5 text-slate-300 group-hover:text-teal-400 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" /></svg>
             </div>
           </div>
         </div>
@@ -112,7 +137,6 @@ export default function Home() {
                 <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center group-hover:bg-rose-100 transition-colors">
                   <svg className="w-4.5 h-4.5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.75h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
                 </div>
-                <span className="text-[8px] font-bold text-rose-600/70 bg-rose-50 px-1.5 py-0.5 rounded-full">Coming Soon</span>
               </div>
               <h3 className="text-base font-semibold text-slate-900 mb-1 group-hover:text-rose-900 transition-colors">Guardrails</h3>
               <p className="text-sm text-slate-500 leading-relaxed flex-1">Content filtering, PII detection, and toxicity monitoring for deployed agents.</p>
@@ -133,14 +157,14 @@ export default function Home() {
         </div>
 
         {/* ── Q4: OPERATE ── */}
-        <div className="col-span-3 flex flex-col overflow-hidden">
+        <div className="col-span-2 flex flex-col overflow-hidden">
           <div className="flex items-center gap-2.5 mb-2.5 flex-shrink-0">
             <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center">
               <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3" /></svg>
             </div>
             <h2 className="text-lg font-bold tracking-tight" style={{ backgroundImage: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 40%, #818cf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }}>Operate</h2>
           </div>
-          <div className="grid grid-cols-3 gap-3 flex-1">
+          <div className="grid grid-cols-2 gap-3 flex-1">
             <div onClick={() => navigate('/deployments')}
               className="group relative bg-white/70 backdrop-blur-sm rounded-xl home-card cursor-pointer p-3.5 flex flex-col overflow-hidden">
               <div className="absolute -bottom-4 -right-4 w-16 h-16 rounded-full opacity-[0.06]" style={{ background: 'radial-gradient(circle, #10b981, transparent 70%)' }} />
@@ -155,19 +179,6 @@ export default function Home() {
               </div>
               <h3 className="text-base font-semibold text-slate-900 mb-1 group-hover:text-emerald-900 transition-colors">Deployments</h3>
               <p className="text-sm text-slate-500 leading-relaxed flex-1">CI/CD pipeline with build logs and visibility.</p>
-            </div>
-
-            <div onClick={() => navigate('/deployments')}
-              className="group relative bg-white/70 backdrop-blur-sm rounded-xl home-card cursor-pointer p-3.5 flex flex-col overflow-hidden">
-              <div className="absolute -bottom-4 -right-4 w-16 h-16 rounded-full opacity-[0.06]" style={{ background: 'radial-gradient(circle, #f59e0b, transparent 70%)' }} />
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center group-hover:bg-amber-100 transition-colors">
-                  <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </div>
-                <svg className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" /></svg>
-              </div>
-              <h3 className="text-base font-semibold text-slate-900 mb-1 group-hover:text-amber-900 transition-colors">Testing</h3>
-              <p className="text-sm text-slate-500 leading-relaxed flex-1">CLI, script, custom, or from-app testing for Foundry use cases.</p>
             </div>
 
             <div onClick={() => navigate('/observability')}
@@ -185,6 +196,37 @@ export default function Home() {
           </div>
         </div>
 
+        {/* ── Q5: GOVERN ── */}
+        <div className="col-span-2 flex flex-col overflow-hidden">
+          <div className="flex items-center gap-2.5 mb-2.5 flex-shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center">
+              <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" /></svg>
+            </div>
+            <h2 className="text-lg font-bold tracking-tight" style={{ backgroundImage: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 40%, #818cf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent' }}>Govern</h2>
+          </div>
+          <div
+            onClick={() => navigate('/govern')}
+            className="group relative bg-white/70 backdrop-blur-sm rounded-xl home-card cursor-pointer p-4 flex flex-col overflow-hidden flex-1"
+          >
+            <div className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full opacity-[0.08]" style={{ background: 'radial-gradient(circle, #6366f1, transparent 70%)' }} />
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+                <svg className="w-4.5 h-4.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
+                </svg>
+              </div>
+              <span className="text-[8px] font-bold text-indigo-600/80 bg-indigo-50 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Command Center</span>
+            </div>
+            <h3 className="text-base font-semibold text-slate-900 mb-1 group-hover:text-indigo-900 transition-colors">Trust · Risk · Cost</h3>
+            <p className="text-sm text-slate-500 leading-relaxed flex-1">One page: AI Trust Stack, fleet KPIs, risk heatmap, model inventory, compliance, FinOps, and live activity.</p>
+            <div className="flex flex-wrap gap-1 mt-2">
+              {['7 layers', 'Models', 'Compliance', 'FinOps'].map(t => (
+                <span key={t} className="text-[8px] font-medium text-indigo-600/80 bg-indigo-50 px-1.5 py-0.5 rounded-full">{t}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {/* Footer */}
@@ -194,7 +236,7 @@ export default function Home() {
           <svg className="w-3 h-3 text-red-400 animate-heartbeat" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 20 20">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
           </svg>
-          by FSI PACE Prototyping Team
+          by FSI PACE
         </p>
       </div>
     </div>

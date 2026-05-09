@@ -143,7 +143,7 @@ module "ecs" {
   app_factory_table_arn  = module.dynamodb.app_factory_table_arn
   guardrails_table_name  = module.dynamodb.guardrails_table_name
   guardrails_table_arn   = module.dynamodb.guardrails_table_arn
-  cors_origins           = concat(["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"], ["https://${module.cloudfront.distribution_domain_name}"], var.domain_name != "" ? ["https://${var.domain_name}"] : [])
+  cors_origins           = concat(["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"], ["https://${module.cloudfront.distribution_domain_name}"], var.domain_name != "" ? ["https://${var.domain_name}"] : [], var.extra_cors_origins)
 
   tags = var.tags
 }

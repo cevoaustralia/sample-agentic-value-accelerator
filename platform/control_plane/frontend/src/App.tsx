@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { UserProvider } from './contexts/UserContext';
 import SignIn from './components/SignIn';
@@ -24,7 +24,14 @@ import AwsAgentsCatalog from './components/AwsAgentsCatalog';
 import CustomAgentsCatalog from './components/CustomAgentsCatalog';
 import AwsDevOpsAgent from './components/AwsDevOpsAgent';
 import CustomAgentCreate from './components/CustomAgentCreate';
-import ToolsFactory from './components/ToolsFactory';
+import Tools from './components/capabilities/Tools';
+import Knowledge from './components/capabilities/Knowledge';
+import Prompts from './components/capabilities/Prompts';
+import CapabilitiesLanding from './components/CapabilitiesLanding';
+import GovernLanding from './components/GovernLanding';
+import ModelRegistry from './components/govern/ModelRegistry';
+import FinOps from './components/govern/FinOps';
+import AuditIncidents from './components/govern/AuditIncidents';
 import MyAgents from './components/MyAgents';
 import MyApps from './components/MyApps';
 
@@ -71,7 +78,20 @@ function AuthGate() {
         <Route path="/aaas/custom" element={<CustomAgentsCatalog />} />
         <Route path="/aaas/custom/create" element={<CustomAgentCreate />} />
         <Route path="/aaas/custom/my-agents" element={<MyAgents />} />
-        <Route path="/aaas/tools" element={<ToolsFactory />} />
+        {/* Capabilities (formerly Tools Factory lived under /aaas/tools) */}
+        <Route path="/aaas/tools" element={<Navigate to="/capabilities/tools" replace />} />
+        <Route path="/capabilities" element={<CapabilitiesLanding />} />
+        <Route path="/capabilities/tools" element={<Tools />} />
+        <Route path="/capabilities/knowledge" element={<Knowledge />} />
+        <Route path="/capabilities/prompts" element={<Prompts />} />
+        {/* Govern: single-page command center + 3 deep sub-pages */}
+        <Route path="/govern" element={<GovernLanding />} />
+        <Route path="/govern/models" element={<ModelRegistry />} />
+        <Route path="/govern/finops" element={<FinOps />} />
+        <Route path="/govern/audit" element={<AuditIncidents />} />
+        {/* Legacy redirects */}
+        <Route path="/govern/dashboard" element={<Navigate to="/govern" replace />} />
+        <Route path="/govern/cost-tracking" element={<Navigate to="/govern/finops" replace />} />
         <Route path="/applications/my-apps" element={<MyApps />} />
         <Route path="/templates" element={<TemplateCatalog />} />
         <Route path="/observability" element={<Observability />} />

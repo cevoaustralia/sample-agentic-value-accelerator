@@ -235,14 +235,12 @@ export default function AppDeployCreate() {
           </select>
         </div>
 
-        {useCaseId === 'customer_service' && (
         <div className="pt-2 border-t border-slate-100">
           <GuardrailSelector
             value={guardrailId}
             onChange={(id, version) => { setGuardrailId(id); setGuardrailVersion(version); }}
           />
         </div>
-        )}
 
         <button
           onClick={handleDeploy}

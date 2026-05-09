@@ -62,7 +62,7 @@ Think Stripe, Linear, or Vercel dashboards — clean, minimal, premium. Specific
 - `/applications/app-factory` — App Factory
 
 ## Footer
-Keep the "Made with heart by FSI PACE Prototyping Team" footer with the heartbeat animation.
+Keep the "Made with heart by FSI PACE" footer with the heartbeat animation.
 
 ## Implementation
 - Read the current Home.tsx first

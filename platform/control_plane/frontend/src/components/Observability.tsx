@@ -11,6 +11,7 @@ export default function Observability() {
   const [activeTab, setActiveTab] = useState<TabId>('langfuse');
   const [foundationDeployment, setFoundationDeployment] = useState<Deployment | null>(null);
   const [loadingFoundation, setLoadingFoundation] = useState(true);
+  const [serverReachable, setServerReachable] = useState<boolean | null>(null);
   const [iframeError, setIframeError] = useState(false);
   const navigate = useNavigate();
 
@@ -34,6 +35,35 @@ export default function Observability() {
     };
     fetchFoundation();
   }, []);
+
+  // Probe Langfuse URL: if unreachable, treat server as not deployed even if
+  // the deployment record still exists (handles the case where ECS was torn
+  // down but DDB record lingers).
+  useEffect(() => {
+    const url = foundationDeployment?.outputs?.langfuse_host;
+    if (!url) { setServerReachable(null); return; }
+    let cancelled = false;
+    const probe = async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      try {
+        // no-cors because Langfuse likely doesn't send CORS headers. We only
+        // care whether the request resolves without a network error.
+        await fetch(url, { method: 'GET', mode: 'no-cors', signal: controller.signal });
+        if (!cancelled) setServerReachable(true);
+      } catch {
+        if (!cancelled) setServerReachable(false);
+      } finally {
+        clearTimeout(timeout);
+      }
+    };
+    probe();
+    return () => { cancelled = true; };
+  }, [foundationDeployment?.outputs?.langfuse_host]);
+
+  // Treat as "has server" only if probe succeeded (or is still pending — we
+  // don't want to flash the empty state while probing).
+  const hasServer = !!foundationDeployment?.outputs?.langfuse_host && serverReachable !== false;
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'langfuse', label: 'Langfuse' },
@@ -97,7 +127,7 @@ export default function Observability() {
                   <p className="text-sm text-slate-500">Checking for Langfuse deployment...</p>
                 </div>
               </div>
-            ) : foundationDeployment?.outputs?.langfuse_host ? (
+            ) : hasServer && foundationDeployment?.outputs?.langfuse_host ? (
               <>
                 <div className="card border-violet-200 bg-violet-50/30">
                   <div className="flex items-start justify-between gap-4">
