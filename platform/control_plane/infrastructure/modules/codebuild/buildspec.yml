@@ -110,7 +110,7 @@ phases:
           else
             echo '{"deployment_id":"'$DEPLOYMENT_ID'","status":"destroyed"}' > /tmp/outputs.json
           fi
-        # If the template includes a custom deploy.sh, run it instead of the default flow
+        # Use custom deploy.sh if present
         elif [ -f "/tmp/workspace/deploy.sh" ]; then
           echo "Custom deploy.sh detected — running template deployment script"
           chmod +x /tmp/workspace/deploy.sh
@@ -131,13 +131,13 @@ phases:
           terraform)
             if [ -d "/tmp/workspace/infra" ] && [ -d "/tmp/workspace/runtime" ]; then
               echo "Multi-stage Terraform detected (infra + runtime)"
-              # Inject S3 backend config into each Terraform directory (keeps source IaC clean)
+              # Inject S3 backend config per TF dir
               for tf_dir in /tmp/workspace/infra /tmp/workspace/runtime; do
                 if ! grep -rq 'backend "s3"' "$tf_dir"/*.tf 2>/dev/null; then
                   printf 'terraform {\n  backend "s3" {}\n}\n' > "$tf_dir/backend_override.tf"
                 fi
               done
-              # Fix shared module path: source IaC uses ../../shared but zip has ../shared
+              # Fix shared module path (../../shared vs ../shared)
               if [ -d /tmp/workspace/shared ]; then
                 ln -sf /tmp/workspace/shared /tmp/shared 2>/dev/null || true
               fi
@@ -150,14 +150,16 @@ phases:
         data_path     = "/tmp/workspace/data/samples"
         TFVARS
               cat > /tmp/workspace/runtime/deploy.auto.tfvars << TFVARS
-        aws_region           = "$AWS_TARGET_REGION"
-        use_case_id          = "${USE_CASE_ID:-unknown}"
-        use_case_name        = "${USE_CASE_ID:-unknown}"
-        framework            = "${FRAMEWORK:-strands}"
-        image_tag            = "${FRAMEWORK:-strands}-latest"
-        enable_tracing       = "${ENABLE_TRACING:-false}"
-        langfuse_host        = "${LANGFUSE_HOST:-}"
+        aws_region = "$AWS_TARGET_REGION"
+        use_case_id = "${USE_CASE_ID:-unknown}"
+        use_case_name = "${USE_CASE_ID:-unknown}"
+        framework = "${FRAMEWORK:-strands}"
+        image_tag = "${FRAMEWORK:-strands}-latest"
+        enable_tracing = "${ENABLE_TRACING:-false}"
+        langfuse_host = "${LANGFUSE_HOST:-}"
         langfuse_secret_name = "${LANGFUSE_SECRET_NAME:-}"
+        guardrail_id = "${GUARDRAIL_ID:-}"
+        guardrail_version = "${GUARDRAIL_VERSION:-}"
         TFVARS
               echo "=== Stage 1: Infrastructure ==="
               cd /tmp/workspace/infra
@@ -166,10 +168,9 @@ phases:
                 -backend-config="key=foundry/${USE_CASE_ID}/${FRAMEWORK}/infra/terraform.tfstate" \
                 -backend-config="region=$AWS_TARGET_REGION" \
                 -backend-config="dynamodb_table=$LOCK_TABLE"
-              # Import pre-existing infra resources to avoid AlreadyExists errors
+              # Import pre-existing infra to avoid AlreadyExists
               USE_CASE_CFN=$(echo "${USE_CASE_ID:-unknown}" | tr '_' '-')
               REGION_SUFFIX=$(echo "$AWS_TARGET_REGION" | tr -d '-')
-              # Derive short use case name (same mapping as terraform locals)
               printf 'import os\nm={"customer_engagement":"custeng","customer_service":"custsvc","customer_chatbot":"custbot","customer_support":"custsup","kyc_banking":"kyc","agentic_payments":"agpay","agentic_commerce":"agcom","payment_operations":"payops","corporate_sales":"corpsales","document_processing":"docproc","document_search":"docsrch","fraud_detection":"fraud","credit_risk":"credrisk","compliance_investigation":"compinv","adverse_media":"advmedia","market_surveillance":"mktsurv","investment_advisory":"invadv","investment_management":"invmgmt","earnings_summarization":"earnsum","economic_research":"econres","email_triage":"emailtri","trading_assistant":"tradeast","trading_insights":"tradeins","research_credit_memo":"credmemo","data_analytics":"dataanly","call_center_analytics":"ccanalytics","post_call_analytics":"postcall","call_summarization":"callsum","claims_management":"claims","life_insurance_agent":"lifeins","legacy_migration":"legmig","code_generation":"codegen","mainframe_migration":"mfmig","ai_assistant":"aiasst"}\nprint(m.get(os.environ.get("USE_CASE_ID",""),"unknown"))\n' > /tmp/uc_short.py
               UC_SHORT=$(python3 /tmp/uc_short.py)
               FW_SHORT="langgraph"; [ "$FRAMEWORK" = "strands" ] && FW_SHORT="strands"
@@ -197,7 +198,7 @@ phases:
               terraform plan -input=false -out=tfplan
               terraform apply -input=false -auto-approve tfplan
               terraform output -json > /tmp/infra_outputs.json 2>/dev/null || echo '{}' > /tmp/infra_outputs.json
-              # Download infra state locally so runtime's terraform_remote_state "local" backend works
+              # Pull infra state for runtime's local backend
               aws s3 cp "s3://$STATE_BUCKET/foundry/${USE_CASE_ID}/${FRAMEWORK}/infra/terraform.tfstate" \
                 /tmp/workspace/infra/terraform.tfstate
               # === Stage 2: Docker Build + Push ===
@@ -220,7 +221,7 @@ phases:
               fi
               echo "=== Stage 3: Runtime ==="
               cd /tmp/workspace/runtime
-              # Import pre-existing runtime CloudFormation stack
+              # Import pre-existing runtime CFN stack
               RT_STACK="ava-${USE_CASE_CFN}-$(echo $FW_SHORT | tr '_' '-')-agentcore-runtime-${REGION_SUFFIX}"
               RT_STATUS=$(aws cloudformation describe-stacks --stack-name "$RT_STACK" --query 'Stacks[0].StackStatus' --output text --region $AWS_TARGET_REGION 2>/dev/null || true)
               if [ "$RT_STATUS" = "ROLLBACK_COMPLETE" ]; then
@@ -233,7 +234,7 @@ phases:
                 -backend-config="key=foundry/${USE_CASE_ID}/${FRAMEWORK}/runtime/terraform.tfstate" \
                 -backend-config="region=$AWS_TARGET_REGION" \
                 -backend-config="dynamodb_table=$LOCK_TABLE"
-              # Import existing CloudFormation stack if it exists and is healthy
+              # Import existing CFN stack if healthy
               if echo "$RT_STATUS" | grep -qE "CREATE_COMPLETE|UPDATE_COMPLETE"; then
                 echo "Importing existing runtime stack: $RT_STACK"
                 terraform import -input=false aws_cloudformation_stack.agentcore_runtime "$RT_STACK" 2>/dev/null || true
@@ -241,7 +242,7 @@ phases:
               terraform plan -input=false -out=tfplan
               terraform apply -input=false -auto-approve tfplan || { echo "ERROR: Runtime terraform apply failed"; exit 1; }
               terraform output -json > /tmp/runtime_outputs.json 2>/dev/null || echo '{}' > /tmp/runtime_outputs.json
-              # === Stage 4: UI (conditional — only if ui/ directory was packaged) ===
+              # === Stage 4: UI (if ui/ packaged) ===
               if [ -d "/tmp/workspace/ui_iac" ] && [ -d "/tmp/workspace/ui" ]; then
                 UI_USE_CASE=$(find /tmp/workspace/ui/ -maxdepth 2 -name "package.json" -printf '%h\n' 2>/dev/null | head -1 | xargs -r basename)
                 if [ -n "$UI_USE_CASE" ]; then
@@ -265,15 +266,16 @@ phases:
                       -backend-config="key=foundry/${USE_CASE_ID}/${FRAMEWORK}/ui/terraform.tfstate" \
                       -backend-config="region=$AWS_TARGET_REGION" \
                       -backend-config="dynamodb_table=$LOCK_TABLE"
-                    # Import pre-existing UI resources to avoid AlreadyExists errors
+                    # Import pre-existing UI resources
                     UCC=$(echo "${USE_CASE_ID:-unknown}" | tr '_' '-'); R=$(echo "$AWS_TARGET_REGION" | tr -d '-'); FS="lg"; [ "$FRAMEWORK" = "strands" ] && FS="st"
                     P="ava-${UCC}-ui"; B="ava-${UCC}-${FS}-ui-${R}-$(aws sts get-caller-identity --query Account --output text)"
                     _imp() { terraform import -input=false "$1" "$2" 2>/dev/null || true; }
+                    _rmperms() { for S in $(aws lambda get-policy --function-name "$1" --region "$AWS_TARGET_REGION" --query Policy --output text 2>/dev/null | jq -r '.Statement[]?.Sid|select(startswith("AllowAPIGateway"))' 2>/dev/null); do aws lambda remove-permission --function-name "$1" --region "$AWS_TARGET_REGION" --statement-id "$S" 2>/dev/null || true; done; }
                     aws s3api head-bucket --bucket "$B" 2>/dev/null && _imp aws_s3_bucket.ui "$B"
                     aws iam get-role --role-name "${P}-proxy-role-${R}" 2>/dev/null && _imp aws_iam_role.lambda_role "${P}-proxy-role-${R}"
                     aws iam get-role --role-name "${P}-worker-role-${R}" 2>/dev/null && _imp aws_iam_role.worker_role "${P}-worker-role-${R}"
                     aws dynamodb describe-table --table-name "${P}-sessions-${R}" --region "$AWS_TARGET_REGION" >/dev/null 2>&1 && _imp aws_dynamodb_table.sessions "${P}-sessions-${R}"
-                    aws lambda get-function --function-name "${P}-proxy-${R}" --region "$AWS_TARGET_REGION" >/dev/null 2>&1 && { _imp aws_lambda_function.proxy "${P}-proxy-${R}"; _imp aws_lambda_permission.apigw "${P}-proxy-${R}/AllowAPIGatewayInvoke"; }
+                    aws lambda get-function --function-name "${P}-proxy-${R}" --region "$AWS_TARGET_REGION" >/dev/null 2>&1 && { _imp aws_lambda_function.proxy "${P}-proxy-${R}"; _rmperms "${P}-proxy-${R}"; }
                     aws lambda get-function --function-name "${P}-worker-${R}" --region "$AWS_TARGET_REGION" >/dev/null 2>&1 && _imp aws_lambda_function.worker "${P}-worker-${R}"
                     aws cloudfront list-functions --query "FunctionList.Items[?Name=='${P}-spa-rw-${R}'].Name" --output text 2>/dev/null | grep -q . && _imp aws_cloudfront_function.spa_rewrite "${P}-spa-rw-${R}"
                     OAC=$(aws cloudfront list-origin-access-controls --query "OriginAccessControlList.Items[?Name=='${P}-s3-oac'].Id" --output text 2>/dev/null); [ -n "$OAC" ] && [ "$OAC" != "None" ] && _imp aws_cloudfront_origin_access_control.s3_oac "$OAC"

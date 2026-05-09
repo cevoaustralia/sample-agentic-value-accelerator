@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { deploymentsApi } from '../api/client';
 import type { Deployment, AppUseCase, ScriptTestResponse, TestDeploymentResponse } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -20,6 +20,88 @@ function getTestEntityInfo(useCase?: AppUseCase): { field: string; entities: str
   return { field: idField, entities };
 }
 
+/** Detect if content looks like markdown/rich text vs raw JSON */
+function isRichText(content: string): boolean {
+  // If it starts with { or [ it's likely JSON
+  if (/^\s*[\[{]/.test(content)) return false;
+  // Check for markdown-like patterns
+  return /^#{1,4}\s|^\*\*|^- |^\d+\.\s|^>\s/m.test(content);
+}
+
+/** Render markdown-like text into formatted HTML */
+function RichTextRenderer({ content }: { content: string }) {
+  const lines = content.split('\n');
+  const elements: React.ReactElement[] = [];
+  let listItems: string[] = [];
+  let listType: 'ul' | 'ol' | null = null;
+
+  const flushList = () => {
+    if (listItems.length > 0 && listType) {
+      const items = listItems.map((item, i) => (
+        <li key={i} className="ml-4 text-sm text-slate-700 leading-relaxed">{renderInline(item)}</li>
+      ));
+      if (listType === 'ul') {
+        elements.push(<ul key={elements.length} className="list-disc space-y-1 my-2">{items}</ul>);
+      } else {
+        elements.push(<ol key={elements.length} className="list-decimal space-y-1 my-2">{items}</ol>);
+      }
+      listItems = [];
+      listType = null;
+    }
+  };
+
+  const renderInline = (text: string) => {
+    // Bold
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="font-semibold text-slate-900">{part.slice(2, -2)}</strong>;
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Headers
+    if (line.startsWith('#### ')) { flushList(); elements.push(<h4 key={i} className="text-sm font-semibold text-slate-800 mt-3 mb-1">{line.slice(5)}</h4>); continue; }
+    if (line.startsWith('### ')) { flushList(); elements.push(<h3 key={i} className="text-base font-semibold text-slate-900 mt-4 mb-1.5">{line.slice(4)}</h3>); continue; }
+    if (line.startsWith('## ')) { flushList(); elements.push(<h2 key={i} className="text-lg font-bold text-slate-900 mt-4 mb-2">{line.slice(3)}</h2>); continue; }
+    if (line.startsWith('# ')) { flushList(); elements.push(<h1 key={i} className="text-xl font-bold text-slate-900 mt-4 mb-2">{line.slice(2)}</h1>); continue; }
+
+    // Horizontal rule
+    if (/^---+$/.test(line.trim())) { flushList(); elements.push(<hr key={i} className="my-3 border-slate-200" />); continue; }
+
+    // Unordered list
+    if (/^[-*]\s/.test(line)) {
+      if (listType !== 'ul') { flushList(); listType = 'ul'; }
+      listItems.push(line.replace(/^[-*]\s+/, ''));
+      continue;
+    }
+
+    // Ordered list
+    if (/^\d+\.\s/.test(line)) {
+      if (listType !== 'ol') { flushList(); listType = 'ol'; }
+      listItems.push(line.replace(/^\d+\.\s+/, ''));
+      continue;
+    }
+
+    // Blockquote
+    if (line.startsWith('> ')) { flushList(); elements.push(<blockquote key={i} className="pl-3 border-l-2 border-blue-300 text-sm text-slate-600 italic my-2">{renderInline(line.slice(2))}</blockquote>); continue; }
+
+    // Empty line
+    if (line.trim() === '') { flushList(); continue; }
+
+    // Regular paragraph
+    flushList();
+    elements.push(<p key={i} className="text-sm text-slate-700 leading-relaxed my-1">{renderInline(line)}</p>);
+  }
+  flushList();
+
+  return <div className="space-y-0.5">{elements}</div>;
+}
+
 /** Collapsible result display used across all three tabs. */
 function ResultBlock({
   title,
@@ -38,6 +120,8 @@ function ResultBlock({
   onCopy: (text: string) => void;
   copied: boolean;
 }) {
+  const rich = isRichText(content);
+
   return (
     <div>
       <button
@@ -59,12 +143,22 @@ function ResultBlock({
       </button>
       {expanded && (
         <div className="relative">
-          <pre className="bg-slate-900 text-slate-100 rounded-xl p-4 text-sm font-mono overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">
-            {content}
-          </pre>
+          {rich ? (
+            <div className="bg-white border border-slate-200 rounded-xl p-5 max-h-[480px] overflow-y-auto">
+              <RichTextRenderer content={content} />
+            </div>
+          ) : (
+            <pre className="bg-slate-900 text-slate-100 rounded-xl p-4 text-sm font-mono overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">
+              {content}
+            </pre>
+          )}
           <button
             onClick={() => onCopy(content)}
-            className="absolute top-3 right-3 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition-colors"
+            className={`absolute top-3 right-3 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+              rich
+                ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                : 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+            }`}
           >
             {copied ? 'Copied' : 'Copy'}
           </button>
@@ -439,8 +533,70 @@ bash ${scriptPath}`;
   // --- Format response for display ---
   const formatResponse = (resp: any): string => {
     if (!resp) return '';
-    if (typeof resp.response === 'string') return resp.response;
-    return JSON.stringify(resp.response ?? resp, null, 2);
+    const data = resp.response ?? resp;
+    if (typeof data === 'string') return data;
+    if (typeof data !== 'object' || data === null) return String(data);
+
+    // Try to extract meaningful text from structured agent responses
+    // Agents often return nested objects — convert to readable markdown-like format
+    const extractText = (obj: any, depth = 0): string => {
+      if (!obj || typeof obj !== 'object') return String(obj ?? '');
+      if (Array.isArray(obj)) {
+        return obj.map(item => {
+          if (typeof item === 'string') return `- ${item}`;
+          if (typeof item === 'object') return extractText(item, depth + 1);
+          return `- ${String(item)}`;
+        }).filter(Boolean).join('\n');
+      }
+
+      const lines: string[] = [];
+      for (const [key, value] of Object.entries(obj)) {
+        if (value === null || value === undefined || value === '') continue;
+        if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value as object).length === 0) continue;
+
+        const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+          if (depth === 0) {
+            lines.push(`**${label}**: ${value}`);
+          } else {
+            lines.push(`${label}: ${value}`);
+          }
+        } else if (Array.isArray(value)) {
+          if (value.length === 0) continue;
+          lines.push(`\n${'#'.repeat(Math.min(depth + 2, 4))} ${label}`);
+          value.forEach(item => {
+            if (typeof item === 'string') {
+              lines.push(`- ${item}`);
+            } else if (typeof item === 'object' && item !== null) {
+              // Compact object in list
+              const parts = Object.entries(item)
+                .filter(([, v]) => v !== null && v !== undefined && v !== '')
+                .map(([k, v]) => {
+                  if (typeof v === 'object') return `${k.replace(/_/g, ' ')}: ${JSON.stringify(v)}`;
+                  return `${k.replace(/_/g, ' ')}: ${v}`;
+                });
+              lines.push(`- ${parts.join(' | ')}`);
+            } else {
+              lines.push(`- ${String(item)}`);
+            }
+          });
+        } else if (typeof value === 'object') {
+          // Check if nested object has any meaningful data
+          const nested = extractText(value, depth + 1);
+          if (nested.trim()) {
+            lines.push(`\n${'#'.repeat(Math.min(depth + 2, 4))} ${label}`);
+            lines.push(nested);
+          }
+        }
+      }
+      return lines.join('\n');
+    };
+
+    const formatted = extractText(data);
+    // If extraction produced meaningful content, return it; otherwise fall back to JSON
+    if (formatted.trim().length > 10) return formatted;
+    return JSON.stringify(data, null, 2);
   };
 
   return (

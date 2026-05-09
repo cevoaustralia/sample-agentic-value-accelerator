@@ -3,6 +3,27 @@ import { useState } from 'react';
 import type { RuntimeConfig } from '../config';
 import type { ServiceResponse } from '../types';
 
+/* ---- Markdown Block (simple renderer) ---- */
+
+function MarkdownBlock({ content }: { content: string }) {
+  if (!content) return null;
+  return (
+    <div className="text-sm leading-relaxed whitespace-pre-line" style={{ color: 'var(--text-secondary)' }}>
+      {content.split('\n').map((line, i) => {
+        if (line.startsWith('###')) return <p key={i} className="font-bold mt-3 mb-1 text-xs uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>{line.replace(/^#{1,3}\s*/, '')}</p>;
+        if (line.startsWith('##')) return <p key={i} className="font-bold mt-3 mb-1" style={{ color: 'var(--text-primary)' }}>{line.replace(/^#{1,2}\s*/, '')}</p>;
+        if (line.startsWith('- **')) {
+          const parts = line.replace(/^- /, '').split('**');
+          return <p key={i} className="ml-4 mb-0.5"><span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{parts[1]}</span>{parts[2]}</p>;
+        }
+        if (line.startsWith('- ')) return <p key={i} className="ml-4 mb-0.5">&bull; {line.slice(2)}</p>;
+        if (line.trim() === '') return <br key={i} />;
+        return <p key={i} className="mb-0.5">{line.replace(/\*\*(.*?)\*\*/g, '$1')}</p>;
+      })}
+    </div>
+  );
+}
+
 /* ---- Status Badge ---- */
 
 function StatusBadge({ status }: { status: string }) {
@@ -313,12 +334,7 @@ function ResultsPanelInternal({
                       {agentMeta.name}
                     </h4>
                   </div>
-                  <pre
-                    className="text-xs whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto"
-                    style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)' }}
-                  >
-                    {content}
-                  </pre>
+                  <MarkdownBlock content={content} />
                 </div>
               );
             })}

@@ -362,12 +362,7 @@ function ResultsPanelInternal({
                       {agentMeta.name}
                     </h4>
                   </div>
-                  <pre
-                    className="text-xs whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto"
-                    style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)' }}
-                  >
-                    {content}
-                  </pre>
+                  <MarkdownBlock content={content} />
                 </div>
               );
             })}

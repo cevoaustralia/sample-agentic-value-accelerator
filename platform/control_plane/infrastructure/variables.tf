@@ -227,3 +227,15 @@ variable "codecommit_enable_notifications" {
   type        = bool
   default     = false
 }
+
+variable "extra_cors_origins" {
+  description = "Extra origins permitted by the backend CORS middleware — use for vanity domains or out-of-band CloudFront distributions (e.g. ava-demo.fsi.pace.aws.dev)."
+  type        = list(string)
+  default     = []
+}
+
+variable "extra_frontend_cloudfront_arns" {
+  description = "Extra CloudFront distribution ARNs that must read the frontend S3 bucket via OAC (e.g. the vanity-aliased distribution)."
+  type        = list(string)
+  default     = []
+}

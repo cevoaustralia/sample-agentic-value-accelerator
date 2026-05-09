@@ -51,20 +51,17 @@ def main():
     run(f"aws ecr get-login-password --region {args.region} {profile_flag} | "
         f"docker login --username AWS --password-stdin {ecr_endpoint}")
 
-    # Register qemu binfmt handlers so an ARM host can build an amd64 image
-    # (pip install etc. runs under emulation). No-op where already present.
-    # CodeBuild ARM hosts reach here; Docker Desktop is already configured.
+    # Register qemu binfmt handlers so an ARM CodeBuild host can build an
+    # amd64 image (pip install etc. runs under emulation). No-op on hosts
+    # that already have cross-arch enabled (local Docker Desktop does).
     print(f"\n🧩 Ensuring cross-arch (amd64) build support (qemu binfmt)...")
-    run("docker run --privileged --rm tonistiigi/binfmt:latest --install amd64", check=False)
+    run("docker run --privileged --rm tonistiigi/binfmt --install amd64", check=False)
 
-    # Build as amd64 via buildx — AWS::ECS::ExpressGatewayService does not
-    # expose RuntimePlatform, so the task defaults to X86_64 and will reject
-    # any arm64 image. buildx handles multi-platform builds reliably on ARM
-    # hosts (vs. plain `docker build --platform` which silently falls through
-    # to the host arch when emulation isn't wired in).
-    print(f"\n🐳 Building Docker image (linux/amd64 via buildx)...")
-    run("docker buildx create --use --name amd64-builder 2>/dev/null || docker buildx use amd64-builder", check=False)
-    run(f"docker buildx build --platform linux/amd64 -t {args.repo_name}:latest --load .")
+    # Build as amd64 — AWS::ECS::ExpressGatewayService does not expose
+    # RuntimePlatform, so the task defaults to X86_64 and will reject any
+    # arm64 image the build host might otherwise produce.
+    print(f"\n🐳 Building Docker image (linux/amd64)...")
+    run(f"docker build --platform linux/amd64 -t {args.repo_name}:latest .")
 
     # Tag
     print(f"\n🏷️  Tagging...")

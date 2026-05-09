@@ -37,3 +37,13 @@ output "deployments_table_arn" {
   description = "ARN of the deployments DynamoDB table"
   value       = aws_dynamodb_table.deployments.arn
 }
+
+output "guardrails_table_name" {
+  description = "Name of the guardrails DynamoDB table"
+  value       = aws_dynamodb_table.guardrails.name
+}
+
+output "guardrails_table_arn" {
+  description = "ARN of the guardrails DynamoDB table"
+  value       = aws_dynamodb_table.guardrails.arn
+}

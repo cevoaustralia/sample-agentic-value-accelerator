@@ -13,6 +13,7 @@ from api.routes.app_factory import router as app_factory_router
 from api.routes.users import router as users_router
 from api.routes.codecommit import router as codecommit_router
 from api.routes.frontier_agents import router as frontier_agents_router
+from api.routes.guardrails import router as guardrails_router
 
 __all__ = [
     "projects_router",
@@ -26,4 +27,5 @@ __all__ = [
     "users_router",
     "codecommit_router",
     "frontier_agents_router",
+    "guardrails_router",
 ]

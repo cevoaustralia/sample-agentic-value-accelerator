@@ -17,7 +17,9 @@ data "archive_file" "alert_mcp" {
   output_path = "${path.module}/alert_mcp.zip"
 }
 
-# Build Lambda package with dependencies
+# Build Lambda package with dependencies.
+# Uses pip's --platform flag to download pre-built manylinux arm64 wheels
+# directly, avoiding a Docker dependency (and Docker Hub rate limits).
 resource "null_resource" "build_data_api_package" {
   triggers = {
     requirements = filemd5("${path.module}/requirements.txt")
@@ -28,13 +30,17 @@ resource "null_resource" "build_data_api_package" {
   provisioner "local-exec" {
     command = <<-EOT
       set -e
-      echo "Building Lambda package with Docker..."
+      echo "Building Lambda package with pip..."
       rm -rf ${path.module}/data_api_package
-      docker run --rm --platform linux/arm64 \
-        -v $(pwd)/${path.module}:/var/task \
-        -w /var/task \
-        amazonlinux:2023 \
-        bash -c "yum install -y python3.12 python3.12-pip && pip3.12 install -r requirements.txt -t data_api_package && cp data_api.py data_api_package/"
+      pip3 install \
+        --platform manylinux2014_aarch64 \
+        --target ${path.module}/data_api_package \
+        --only-binary=:all: \
+        --python-version 3.12 \
+        --implementation cp \
+        --upgrade \
+        -r ${path.module}/requirements.txt
+      cp ${path.module}/data_api.py ${path.module}/data_api_package/
       echo "Lambda package built successfully"
     EOT
   }

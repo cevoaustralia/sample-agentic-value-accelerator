@@ -72,6 +72,72 @@ function Collapsible({ title, children, defaultOpen = false, delay = 0, accentCo
    MAIN COMPONENT
    ============================================ */
 
+/* ---- Markdown Renderer ---- */
+function MarkdownBlock({ content }: { content: string }) {
+  const lines = content.split('\n');
+  const elements: JSX.Element[] = [];
+  let listItems: { text: string; type: 'ul' | 'ol' }[] = [];
+
+  const flushList = () => {
+    if (listItems.length > 0) {
+      const isOl = listItems[0].type === 'ol';
+      const Tag = isOl ? 'ol' : 'ul';
+      elements.push(
+        <Tag key={elements.length} className={`space-y-1.5 my-3 ${isOl ? 'list-decimal' : 'list-disc'} ml-5`}>
+          {listItems.map((item, i) => (
+            <li key={i} className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{renderInline(item.text)}</li>
+          ))}
+        </Tag>
+      );
+      listItems = [];
+    }
+  };
+
+  const renderInline = (text: string): (string | JSX.Element)[] => {
+    const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) return <strong key={i} style={{ color: 'var(--text-primary)' }}>{part.slice(2, -2)}</strong>;
+      if (part.startsWith('*') && part.endsWith('*')) return <em key={i}>{part.slice(1, -1)}</em>;
+      if (part.startsWith('`') && part.endsWith('`')) return <code key={i} className="px-1.5 py-0.5 rounded text-xs font-mono" style={{ background: 'rgba(139,92,246,0.08)', color: '#A78BFA' }}>{part.slice(1, -1)}</code>;
+      return part;
+    });
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.startsWith('#### ')) { flushList(); elements.push(<h4 key={i} className="text-sm font-mono font-bold mt-4 mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{line.slice(5)}</h4>); continue; }
+    if (line.startsWith('### ')) { flushList(); elements.push(<h3 key={i} className="text-sm font-mono font-bold mt-5 mb-2 uppercase tracking-wider" style={{ color: '#60A5FA' }}>{line.slice(4)}</h3>); continue; }
+    if (line.startsWith('## ')) { flushList(); elements.push(<h2 key={i} className="text-base font-bold mt-5 mb-2" style={{ color: '#8B5CF6', textShadow: '0 0 8px rgba(139,92,246,0.2)' }}>{line.slice(3)}</h2>); continue; }
+    if (line.startsWith('# ')) { flushList(); elements.push(<h1 key={i} className="text-lg font-bold mt-5 mb-2" style={{ color: 'var(--text-primary)' }}>{line.slice(2)}</h1>); continue; }
+    if (/^---+$/.test(line.trim())) { flushList(); elements.push(<hr key={i} className="my-4" style={{ borderColor: 'var(--border, rgba(139,92,246,0.1))' }} />); continue; }
+    if (/^[-*]\s/.test(line)) { listItems.push({ text: line.replace(/^[-*]\s+/, ''), type: 'ul' }); continue; }
+    if (/^\d+\.\s/.test(line)) { listItems.push({ text: line.replace(/^\d+\.\s+/, ''), type: 'ol' }); continue; }
+    if (line.startsWith('> ')) { flushList(); elements.push(<blockquote key={i} className="pl-3 my-2 text-sm italic" style={{ borderLeft: '2px solid #8B5CF6', color: 'var(--text-muted)' }}>{renderInline(line.slice(2))}</blockquote>); continue; }
+    if (line.startsWith('|')) {
+      flushList();
+      const tableLines: string[] = [line];
+      while (i + 1 < lines.length && lines[i + 1].startsWith('|')) { i++; tableLines.push(lines[i]); }
+      const rows = tableLines.filter(l => !l.match(/^\|[\s-|]+\|$/)).map(l => l.split('|').filter(c => c.trim()).map(c => c.trim()));
+      if (rows.length > 0) {
+        elements.push(
+          <div key={elements.length} className="overflow-x-auto my-3 rounded-lg" style={{ border: '1px solid rgba(139,92,246,0.15)' }}>
+            <table className="w-full text-xs font-mono">
+              <thead><tr style={{ background: 'rgba(139,92,246,0.04)' }}>{rows[0].map((h, hi) => <th key={hi} className="px-3 py-2 text-left" style={{ color: 'var(--text-secondary)' }}>{h}</th>)}</tr></thead>
+              <tbody>{rows.slice(1).map((row, ri) => <tr key={ri} style={{ borderTop: '1px solid rgba(139,92,246,0.08)' }}>{row.map((cell, ci) => <td key={ci} className="px-3 py-2" style={{ color: 'var(--text-secondary)' }}>{cell}</td>)}</tr>)}</tbody>
+            </table>
+          </div>
+        );
+      }
+      continue;
+    }
+    if (line.trim() === '') { flushList(); continue; }
+    flushList();
+    elements.push(<p key={i} className="text-sm leading-relaxed my-1.5" style={{ color: 'var(--text-secondary)' }}>{renderInline(line)}</p>);
+  }
+  flushList();
+  return <div>{elements}</div>;
+}
+
 function ResultsPanelInternal({
   response,
   config,
@@ -85,6 +151,11 @@ function ResultsPanelInternal({
   const requirement_analysis = { functional_requirements: [], non_functional_requirements: [], dependencies: [], data_models: [], api_contracts: [], risks: [], ..._ra };
   const scaffolded_code = { files_generated: 0, project_structure: [], design_patterns_applied: [], configuration_files: [], ..._sc };
   const test_output = { unit_tests_generated: 0, integration_tests_generated: 0, test_frameworks_used: [], test_fixtures_created: [], ..._to };
+
+  // Check if structured data is essentially empty (agent returned raw_analysis instead)
+  const hasStructuredData = requirement_analysis.functional_requirements.length > 0 ||
+    scaffolded_code.files_generated > 0 || scaffolded_code.project_structure.length > 0 ||
+    test_output.unit_tests_generated > 0 || test_output.integration_tests_generated > 0;
 
   return (
     <div className="space-y-5">
@@ -141,8 +212,36 @@ function ResultsPanelInternal({
         </div>
       </div>
 
+      {/* ===== Agent Reports (shown prominently when structured data is empty) ===== */}
+      {!hasStructuredData && response.raw_analysis && (
+        <>
+          {Object.entries(response.raw_analysis).map(([key, agentData]) => {
+            if (!agentData) return null;
+            const agentMeta = config.agents.find((a) => a.id === agentData.agent) || { name: agentData.agent || key };
+            const content = agentData.analysis || agentData.assessment || '';
+            if (!content) return null;
+            const colorMap: Record<string, string> = {
+              requirement_analyst: '#8B5CF6',
+              code_scaffolder: '#60A5FA',
+              test_generator: '#34D399',
+            };
+            const color = colorMap[agentData.agent] || '#8B5CF6';
+
+            return (
+              <div key={key} className="glass animate-fade-in p-6" style={{ animationDelay: '0.1s', borderColor: `${color}20` }}>
+                <div className="flex items-center gap-2 mb-5">
+                  <div className="w-2 h-2 rounded-full" style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
+                  <h3 className="text-sm font-mono uppercase tracking-widest" style={{ color }}>{agentMeta.name}</h3>
+                </div>
+                <MarkdownBlock content={content} />
+              </div>
+            );
+          })}
+        </>
+      )}
+
       {/* ===== Requirement Analysis ===== */}
-      <Collapsible title="Requirement Analysis" defaultOpen={true} delay={0.1} accentColor="#8B5CF6">
+      {hasStructuredData && <Collapsible title="Requirement Analysis" defaultOpen={true} delay={0.1} accentColor="#8B5CF6">
         <div className="space-y-6">
           {requirement_analysis.functional_requirements.length > 0 && (
             <div>
@@ -191,10 +290,10 @@ function ResultsPanelInternal({
             </div>
           )}
         </div>
-      </Collapsible>
+      </Collapsible>}
 
       {/* ===== Scaffolded Code ===== */}
-      <Collapsible title="Scaffolded Code" defaultOpen={true} delay={0.15} accentColor="#60A5FA">
+      {hasStructuredData && <Collapsible title="Scaffolded Code" defaultOpen={true} delay={0.15} accentColor="#60A5FA">
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <MetricCard label="Files Generated" value={scaffolded_code.files_generated} color="#60A5FA" />
@@ -233,10 +332,10 @@ function ResultsPanelInternal({
             </div>
           )}
         </div>
-      </Collapsible>
+      </Collapsible>}
 
       {/* ===== Test Output ===== */}
-      <Collapsible title="Test Output" defaultOpen={true} delay={0.2} accentColor="#34D399">
+      {hasStructuredData && <Collapsible title="Test Output" defaultOpen={true} delay={0.2} accentColor="#34D399">
         <div className="space-y-6">
           <div className="grid grid-cols-3 gap-4">
             <MetricCard label="Unit Tests" value={test_output.unit_tests_generated} color="#34D399" />
@@ -274,16 +373,17 @@ function ResultsPanelInternal({
             </div>
           )}
         </div>
-      </Collapsible>
+      </Collapsible>}
 
-      {/* ===== Raw Agent Analysis ===== */}
-      {response.raw_analysis && (
+      {/* ===== Raw Agent Analysis (supplementary when structured data exists) ===== */}
+      {hasStructuredData && response.raw_analysis && (
         <Collapsible title="Detailed Agent Reports" delay={0.3} accentColor="#8B5CF6">
           <div className="space-y-4">
             {Object.entries(response.raw_analysis).map(([key, agentData]) => {
               if (!agentData) return null;
               const agentMeta = config.agents.find((a) => a.id === agentData.agent) || { name: agentData.agent || key };
               const content = agentData.analysis || agentData.assessment || '';
+              if (!content) return null;
               const colorMap: Record<string, string> = {
                 requirement_analyst: '#8B5CF6',
                 code_scaffolder: '#60A5FA',
@@ -310,12 +410,7 @@ function ResultsPanelInternal({
                       {agentMeta.name}
                     </h4>
                   </div>
-                  <pre
-                    className="text-xs whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto"
-                    style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)' }}
-                  >
-                    {content}
-                  </pre>
+                  <MarkdownBlock content={content} />
                 </div>
               );
             })}

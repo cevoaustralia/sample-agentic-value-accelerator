@@ -39,3 +39,15 @@ variable "langfuse_secret_name" {
   type        = string
   default     = ""
 }
+
+variable "guardrail_id" {
+  description = "Bedrock Guardrail ID to apply to model invocations"
+  type        = string
+  default     = ""
+}
+
+variable "guardrail_version" {
+  description = "Bedrock Guardrail version (e.g. DRAFT or a published version number)"
+  type        = string
+  default     = ""
+}

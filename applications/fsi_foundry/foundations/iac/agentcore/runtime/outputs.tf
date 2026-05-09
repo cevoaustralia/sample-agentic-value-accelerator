@@ -33,6 +33,16 @@ output "workspace_name" {
   value       = local.workspace_name
 }
 
+output "guardrail_id" {
+  description = "Bedrock Guardrail ID attached to this deployment"
+  value       = var.guardrail_id
+}
+
+output "guardrail_version" {
+  description = "Bedrock Guardrail version"
+  value       = var.guardrail_version
+}
+
 output "deployment_instructions" {
   description = "Instructions for testing the agent"
   value       = <<-EOT

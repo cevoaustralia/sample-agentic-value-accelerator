@@ -5,7 +5,7 @@
 resource "aws_apigatewayv2_vpc_link" "main" {
   name               = "${var.name_prefix}-vpc-link"
   security_group_ids = [var.ecs_security_group_id]
-  subnet_ids         = var.private_subnet_ids
+  subnet_ids         = var.public_subnet_ids
 
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-vpc-link"

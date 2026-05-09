@@ -75,6 +75,73 @@ function Collapsible({ title, children, defaultOpen = false, delay = 0 }: { titl
    MAIN COMPONENT
    ============================================ */
 
+/* ---- Markdown Renderer ---- */
+function MarkdownBlock({ content }: { content: string }) {
+  const lines = content.split('\n');
+  const elements: JSX.Element[] = [];
+  let listItems: { text: string; type: 'ul' | 'ol' }[] = [];
+
+  const flushList = () => {
+    if (listItems.length > 0) {
+      const isOl = listItems[0].type === 'ol';
+      const Tag = isOl ? 'ol' : 'ul';
+      elements.push(
+        <Tag key={elements.length} className={`space-y-1.5 my-3 ${isOl ? 'list-decimal' : 'list-disc'} ml-5`}>
+          {listItems.map((item, i) => (
+            <li key={i} className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{renderInline(item.text)}</li>
+          ))}
+        </Tag>
+      );
+      listItems = [];
+    }
+  };
+
+  const renderInline = (text: string): (string | JSX.Element)[] => {
+    const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) return <strong key={i} style={{ color: 'var(--text-primary)' }}>{part.slice(2, -2)}</strong>;
+      if (part.startsWith('*') && part.endsWith('*')) return <em key={i}>{part.slice(1, -1)}</em>;
+      if (part.startsWith('`') && part.endsWith('`')) return <code key={i} className="px-1.5 py-0.5 rounded text-xs font-mono" style={{ background: 'var(--dark)', color: 'var(--green-term)' }}>{part.slice(1, -1)}</code>;
+      return part;
+    });
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.startsWith('#### ')) { flushList(); elements.push(<h4 key={i} className="text-sm font-mono font-bold mt-4 mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{line.slice(5)}</h4>); continue; }
+    if (line.startsWith('### ')) { flushList(); elements.push(<h3 key={i} className="text-sm font-mono font-bold mt-5 mb-2 uppercase tracking-wider" style={{ color: 'var(--amber)' }}>{line.slice(4)}</h3>); continue; }
+    if (line.startsWith('## ')) { flushList(); elements.push(<h2 key={i} className="text-base font-bold mt-5 mb-2" style={{ color: 'var(--green-term)', textShadow: '0 0 8px rgba(34,197,94,0.2)' }}>{line.slice(3)}</h2>); continue; }
+    if (line.startsWith('# ')) { flushList(); elements.push(<h1 key={i} className="text-lg font-bold mt-5 mb-2" style={{ color: 'var(--text-primary)' }}>{line.slice(2)}</h1>); continue; }
+    if (/^---+$/.test(line.trim())) { flushList(); elements.push(<hr key={i} className="my-4" style={{ borderColor: 'var(--border)' }} />); continue; }
+    if (/^[-*]\s/.test(line)) { listItems.push({ text: line.replace(/^[-*]\s+/, ''), type: 'ul' }); continue; }
+    if (/^\d+\.\s/.test(line)) { listItems.push({ text: line.replace(/^\d+\.\s+/, ''), type: 'ol' }); continue; }
+    if (line.startsWith('> ')) { flushList(); elements.push(<blockquote key={i} className="pl-3 my-2 text-sm italic" style={{ borderLeft: '2px solid var(--blue)', color: 'var(--text-muted)' }}>{renderInline(line.slice(2))}</blockquote>); continue; }
+    if (line.startsWith('|')) {
+      // Table row — collect consecutive table lines
+      flushList();
+      const tableLines: string[] = [line];
+      while (i + 1 < lines.length && lines[i + 1].startsWith('|')) { i++; tableLines.push(lines[i]); }
+      const rows = tableLines.filter(l => !l.match(/^\|[\s-|]+\|$/)).map(l => l.split('|').filter(c => c.trim()).map(c => c.trim()));
+      if (rows.length > 0) {
+        elements.push(
+          <div key={elements.length} className="overflow-x-auto my-3 rounded-lg" style={{ border: '1px solid var(--border)' }}>
+            <table className="w-full text-xs font-mono">
+              <thead><tr style={{ background: 'var(--dark)' }}>{rows[0].map((h, hi) => <th key={hi} className="px-3 py-2 text-left" style={{ color: 'var(--text-secondary)' }}>{h}</th>)}</tr></thead>
+              <tbody>{rows.slice(1).map((row, ri) => <tr key={ri} style={{ borderTop: '1px solid var(--border)' }}>{row.map((cell, ci) => <td key={ci} className="px-3 py-2" style={{ color: 'var(--text-secondary)' }}>{cell}</td>)}</tr>)}</tbody>
+            </table>
+          </div>
+        );
+      }
+      continue;
+    }
+    if (line.trim() === '') { flushList(); continue; }
+    flushList();
+    elements.push(<p key={i} className="text-sm leading-relaxed my-1.5" style={{ color: 'var(--text-secondary)' }}>{renderInline(line)}</p>);
+  }
+  flushList();
+  return <div>{elements}</div>;
+}
+
 function ResultsPanelInternal({
   response,
   config,
@@ -88,6 +155,11 @@ function ResultsPanelInternal({
   const code_analysis = { languages_detected: [], dependencies: [], patterns_identified: [], risks: [], ..._ca };
   const migration_plan = { phases: [], dependency_order: [], ..._mp };
   const conversion_output = { patterns_converted: [], manual_review_needed: [], ..._co };
+
+  // Check if structured data is essentially empty (agent returned raw_analysis instead)
+  const hasStructuredData = code_analysis.languages_detected.length > 0 || code_analysis.dependencies.length > 0 ||
+    migration_plan.phases.length > 0 || conversion_output.patterns_converted.length > 0 ||
+    (code_analysis.total_files && code_analysis.total_files > 0);
 
   return (
     <div className="space-y-5">
@@ -155,8 +227,36 @@ function ResultsPanelInternal({
         </div>
       </div>
 
+      {/* ===== Agent Reports (shown prominently when structured data is empty) ===== */}
+      {!hasStructuredData && response.raw_analysis && (
+        <>
+          {Object.entries(response.raw_analysis).map(([key, agentData]) => {
+            if (!agentData) return null;
+            const agentMeta = config.agents.find((a) => a.id === agentData.agent) || { name: agentData.agent || key };
+            const content = agentData.analysis || agentData.assessment || '';
+            if (!content) return null;
+            const colorMap: Record<string, string> = {
+              code_analyzer: 'var(--green-term)',
+              migration_planner: 'var(--blue)',
+              conversion_agent: 'var(--amber)',
+            };
+            const color = colorMap[agentData.agent] || 'var(--green-term)';
+
+            return (
+              <div key={key} className="card-terminal animate-fade-in p-6" style={{ animationDelay: '0.1s' }}>
+                <div className="flex items-center gap-2 mb-5">
+                  <div className="w-2 h-2 rounded-full" style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
+                  <h3 className="text-sm font-mono uppercase tracking-widest" style={{ color }}>{agentMeta.name}</h3>
+                </div>
+                <MarkdownBlock content={content} />
+              </div>
+            );
+          })}
+        </>
+      )}
+
       {/* ===== Code Analysis ===== */}
-      {code_analysis && (
+      {hasStructuredData && code_analysis && (
         <div className="card-terminal animate-fade-in p-6" style={{ animationDelay: '0.1s' }}>
           <div className="flex items-center gap-2 mb-5">
             <svg className="w-4 h-4" style={{ color: 'var(--green-term)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -228,7 +328,7 @@ function ResultsPanelInternal({
       )}
 
       {/* ===== Migration Plan ===== */}
-      {migration_plan && (
+      {hasStructuredData && migration_plan && (
         <div className="card-terminal animate-fade-in p-6" style={{ animationDelay: '0.15s' }}>
           <div className="flex items-center gap-2 mb-5">
             <svg className="w-4 h-4" style={{ color: 'var(--blue)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -309,7 +409,7 @@ function ResultsPanelInternal({
       )}
 
       {/* ===== Conversion Output ===== */}
-      {conversion_output && (
+      {hasStructuredData && conversion_output && (
         <div className="card-terminal animate-fade-in p-6" style={{ animationDelay: '0.2s' }}>
           <div className="flex items-center gap-2 mb-5">
             <svg className="w-4 h-4" style={{ color: 'var(--amber)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -380,14 +480,15 @@ function ResultsPanelInternal({
         </div>
       )}
 
-      {/* ===== Raw Agent Analysis ===== */}
-      {response.raw_analysis && (
+      {/* ===== Raw Agent Analysis (supplementary when structured data exists) ===== */}
+      {hasStructuredData && response.raw_analysis && (
         <Collapsible title="Detailed Agent Reports" delay={0.3}>
           <div className="space-y-4">
             {Object.entries(response.raw_analysis).map(([key, agentData]) => {
               if (!agentData) return null;
               const agentMeta = config.agents.find((a) => a.id === agentData.agent) || { name: agentData.agent || key };
               const content = agentData.analysis || agentData.assessment || '';
+              if (!content) return null;
               const colorMap: Record<string, string> = {
                 code_analyzer: 'var(--green-term)',
                 migration_planner: 'var(--blue)',
@@ -413,12 +514,7 @@ function ResultsPanelInternal({
                       {agentMeta.name}
                     </h4>
                   </div>
-                  <pre
-                    className="text-xs whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto"
-                    style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}
-                  >
-                    {content}
-                  </pre>
+                  <MarkdownBlock content={content} />
                 </div>
               );
             })}

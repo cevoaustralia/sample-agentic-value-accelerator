@@ -69,6 +69,8 @@ class FoundryDeployRequest(BaseModel):
     framework: str = "langchain_langgraph"
     deployment_pattern: str = "agentcore"
     aws_region: str = "us-east-1"
+    guardrail_id: Optional[str] = None
+    guardrail_version: Optional[str] = None
     parameters: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -80,6 +82,8 @@ class FoundryDeployFromGitRequest(BaseModel):
     framework: str = "langchain_langgraph"
     deployment_pattern: str = "agentcore"
     aws_region: str = "us-east-1"
+    guardrail_id: Optional[str] = None
+    guardrail_version: Optional[str] = None
     parameters: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -135,6 +139,9 @@ async def deploy_foundry_use_case(req: FoundryDeployRequest, _=RBACDepends(requi
         "FRAMEWORK": req.framework,
         "DEPLOYMENT_PATTERN": req.deployment_pattern,
     }
+    if req.guardrail_id:
+        merged_params["GUARDRAIL_ID"] = req.guardrail_id
+        merged_params["GUARDRAIL_VERSION"] = req.guardrail_version or "DRAFT"
 
     # Provision per-use-case Langfuse project if foundation stack provides it
     langfuse_host = foundation_outputs.get("langfuse_host")
@@ -299,18 +306,23 @@ async def deploy_foundry_from_git(req: FoundryDeployFromGitRequest, _=RBACDepend
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"CodeCommit verification failed: {e}")
 
+    git_params = {
+        **req.parameters,
+        "USE_CASE_ID": req.use_case_name,
+        "FRAMEWORK": req.framework,
+        "DEPLOYMENT_PATTERN": req.deployment_pattern,
+    }
+    if req.guardrail_id:
+        git_params["GUARDRAIL_ID"] = req.guardrail_id
+        git_params["GUARDRAIL_VERSION"] = req.guardrail_version or "DRAFT"
+
     deploy_req = DeploymentCreate(
         deployment_name=req.deployment_name,
         template_id=f"foundry-{req.use_case_name}",
         iac_type="terraform",
         framework_id=req.framework,
         aws_region=req.aws_region,
-        parameters={
-            **req.parameters,
-            "USE_CASE_ID": req.use_case_name,
-            "FRAMEWORK": req.framework,
-            "DEPLOYMENT_PATTERN": req.deployment_pattern,
-        },
+        parameters=git_params,
     )
 
     svc = get_deploy_svc()

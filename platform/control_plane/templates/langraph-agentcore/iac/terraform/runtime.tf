@@ -16,6 +16,8 @@ resource "aws_agentcore_runtime" "main" {
       AWS_REGION           = var.aws_region
       LANGFUSE_HOST        = var.langfuse_host
       LANGFUSE_SECRET_NAME = var.langfuse_secret_name
+      GUARDRAIL_ID         = var.guardrail_id
+      GUARDRAIL_VERSION    = var.guardrail_version
     }
   }
 

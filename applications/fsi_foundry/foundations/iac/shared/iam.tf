@@ -40,31 +40,18 @@ resource "aws_iam_policy" "bedrock_access" {
         Effect = "Allow"
         Action = [
           "bedrock:InvokeModel",
-          "bedrock:InvokeModelWithResponseStream"
+          "bedrock:InvokeModelWithResponseStream",
+          "bedrock:Converse",
+          "bedrock:ConverseStream"
         ]
-        # Cross-region inference profiles route to different regions within the same geographic area
-        # For example, eu.* profiles may route to eu-west-1, eu-central-1, etc.
-        # We allow access to the deployment region and common routing destinations
-        Resource = [
-          # Foundation models in deployment region
-          "arn:aws:bedrock:${local.aws_region}::foundation-model/anthropic.claude-*",
-          # Inference profiles in deployment region
-          "arn:aws:bedrock:${local.aws_region}:${local.account_id}:inference-profile/*",
-          # Cross-region inference may route to other regions in the same geographic area
-          # EU regions: eu-west-1, eu-central-1, eu-west-2, eu-west-3, eu-north-1
-          "arn:aws:bedrock:eu-west-1::foundation-model/anthropic.claude-*",
-          "arn:aws:bedrock:eu-central-1::foundation-model/anthropic.claude-*",
-          "arn:aws:bedrock:eu-west-2::foundation-model/anthropic.claude-*",
-          "arn:aws:bedrock:eu-west-3::foundation-model/anthropic.claude-*",
-          "arn:aws:bedrock:eu-north-1::foundation-model/anthropic.claude-*",
-          # US regions: us-east-1, us-east-2, us-west-2
-          "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-*",
-          "arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-*",
-          "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-*",
-          # APAC regions: ap-southeast-1, ap-northeast-1
-          "arn:aws:bedrock:ap-southeast-1::foundation-model/anthropic.claude-*",
-          "arn:aws:bedrock:ap-northeast-1::foundation-model/anthropic.claude-*"
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "bedrock:ApplyGuardrail"
         ]
+        Resource = "arn:aws:bedrock:${local.aws_region}:${local.account_id}:guardrail/*"
       }
     ]
   })
@@ -76,7 +63,7 @@ resource "aws_iam_policy" "bedrock_access" {
 
 resource "aws_iam_policy" "cloudwatch_logs" {
   name        = "${local.resource_prefix}-cloudwatch-logs-${random_id.iam_suffix.hex}-${var.deployment_suffix}"
-  description = "Allow writing to CloudWatch Logs"
+  description = "Allow writing to CloudWatch Logs and Metrics"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -93,6 +80,13 @@ resource "aws_iam_policy" "cloudwatch_logs" {
           "arn:aws:logs:${local.aws_region}:${local.account_id}:log-group:/aws/ava/*",
           "arn:aws:logs:${local.aws_region}:${local.account_id}:log-group:/aws/ava/*:log-stream:*"
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:PutMetricData"
+        ]
+        Resource = "*"
       }
     ]
   })

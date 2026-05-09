@@ -100,7 +100,13 @@ resource "aws_s3_bucket_policy" "frontend_cloudfront" {
         Resource = "${var.frontend_bucket_arn}/*"
         Condition = {
           StringEquals = {
-            "AWS:SourceArn" = aws_cloudfront_distribution.main.arn
+            # Include the TF-managed distribution plus any additional distributions
+            # (e.g., the vanity-aliased `ava-demo.fsi.pace.aws.dev` distribution)
+            # that are created out-of-band and must also be permitted.
+            "AWS:SourceArn" = concat(
+              [aws_cloudfront_distribution.main.arn],
+              var.additional_cloudfront_distribution_arns,
+            )
           }
         }
       }

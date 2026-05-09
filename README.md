@@ -27,12 +27,14 @@ An open-source platform that unifies use cases, reference apps, apps generation 
 
 ## Key Features
 
-- **34 FSI Use Cases** — Production-ready multi-agent POCs across banking, payments, insurance, capital markets, operations, risk & compliance, and modernization
+- **34 FSI Use Cases** —Multi-agent POCs across banking, payments, insurance, capital markets, operations, risk & compliance, and modernization
 - **Dual Framework Support** — Every use case implemented in both LangGraph/LangChain and Strands Agents SDK — pick the one your team prefers
 - **Reference Implementations** — Fork-and-customize full-stack apps with dedicated frontend, backend, and infrastructure (Market Surveillance, Shopping Concierge, Case Management, Agent Safety)
 - **Agent-as-a-Service** — Deploy Amazon's managed Frontier Agents (DevOps, Security, Kiro) into your account, or build Custom Agents on Bedrock AgentCore
 - **App Factory** — Describe your use case in plain language; the pipeline AI-generates the agent code plus Terraform and deploys it to AgentCore — no coding required
-- **Tools Factory** — Pre-built catalog (MCP Gateway, Knowledge Base, Code Interpreter, Web Browser, and more) plus custom tools from Lambda, APIs, or MCP servers
+- **Capabilities Catalog** _(Coming Soon)_ — Reusable building blocks every agent depends on: **Tools** (Lambdas, APIs, MCP servers), **Knowledge** (data sources + Bedrock Knowledge Bases), and **Prompts** (versioned system prompts and templates)
+- **Guardrails** — Amazon Bedrock Guardrails attached to every agent — content filtering, PII detection, denied topics, and prompt-injection defense, governed from a single template library
+- **Governance Command Center** _(Coming Soon)_ — One-page view of AI Trust Stack posture across 7 layers, model registry, risk heatmap, compliance coverage (NIST AI RMF, ISO 42001, EU AI Act, SR 11-7), and FinOps — with drill-down pages for Model Registry, Cost & FinOps, and Audit & Incidents
 - **Full Control Plane** — React + FastAPI web UI for browsing, deploying, testing, managing, and observing every agent application
 - **One-Click Deployment** — Deploy any use case from the UI; CI/CD (CodeBuild + Step Functions + Terraform/CDK) provisions infrastructure automatically
 - **Dual Deployment Paths** — Quick Deploy (S3 archive) for business users, Deploy from Git (CodeCommit) for developers who want to customize source first
@@ -238,9 +240,45 @@ One-click deployment from the Control Plane UI that provisions the agent space i
 
 Build your own autonomous agent on Bedrock AgentCore — choose a model, attach tools, configure memory and guardrails, and deploy to a managed runtime.
 
-### Tools Factory (Coming Soon)
+---
 
-Pre-built catalog of agent tools — MCP Gateway, Knowledge Base, Code Interpreter, Web Browser, Database Query, API Connector, Document Parser, and Notifications — plus a builder for custom tools from Lambda functions, REST APIs, or MCP servers. Tools are scoped per agent at deploy time and invoked automatically based on the agent's reasoning.
+## Capabilities <sub><i>(Coming Soon)</i></sub>
+
+Composable building blocks agents reach for at runtime — governed once, reused across every application and autonomous agent. Three primitives:
+
+| Capability | What it is | Examples |
+|------------|------------|----------|
+| **Tools** | Everything agents *call* | MCP Gateway, Code Interpreter, Web Browser, API Connector, Notifications, custom Lambda/OpenAPI tools |
+| **Knowledge** | Everything agents *read from* | S3 data sources, RDS/JDBC connections, Bedrock Knowledge Bases (vector + hybrid retrieval), document stores, streaming feeds |
+| **Prompts** | Reusable, versioned templates | System prompts, response templates, evaluation rubrics, guardrail clauses — backed by Amazon Bedrock Prompt Management |
+
+Each primitive is registered once with access control, lineage, and audit trail, then attached to agents at deploy time. Update a prompt or re-index a knowledge base without redeploying the agent.
+
+---
+
+## Secure
+
+Safety controls every deployed agent passes through — built on Amazon Bedrock Guardrails and extended with platform-level policy management.
+
+| Component | Description | Status |
+|-----------|-------------|--------|
+| **Guardrails** | Content filters (hate, insults, sexual, violence, misconduct, prompt attack), PII detection and redaction, denied topics, word filters, and contextual grounding. Manage templates from the Control Plane; attach one or more to any agent at deploy time. FSI-tuned presets provided (FSI Standard, Market Surveillance, Customer Service). | **Available** |
+| **Policy** | Governance frameworks and compliance policy management — map controls to frameworks, track exceptions and waivers. | Coming Soon |
+
+---
+
+## Govern <sub><i>(Coming Soon)</i></sub>
+
+A new pillar focused on the governance story regulators and executives expect — one command-center view plus deeper workspaces for the teams that live in each domain.
+
+| View | What it shows |
+|------|---------------|
+| **Command Center** | AI Trust Stack posture across 7 layers (infrastructure, data, model, application, agent, access, governance); fleet KPIs; 30-day trust & guardrail trend; agent × risk heatmap; model inventory snapshot; compliance coverage for NIST AI RMF / ISO 42001 / NYDFS Part 500 / EU AI Act / SR 11-7 / SOC 2; Cost & FinOps summary; recent activity feed |
+| **Model Registry** | Full inventory with owner, risk tier, eval score, SR 11-7 attestation board, EU AI Act classification, approval pipeline per model, and drift signals. Click any model for the full Model 360 card |
+| **Cost & FinOps** | FinOps health score, spend velocity, cost by model, 30-day cost vs budget, BU budgets, 12-month forecast with three growth scenarios, unit economics, chargeback statement, commitment / Provisioned Throughput planner, and optimization opportunities |
+| **Audit & Incidents** | Searchable timeline of guardrail events, incidents, approvals, deployments, and config changes with per-event evidence drawer (trace links, CloudTrail records, exportable signed bundles) |
+
+All pages are mock-data today to demonstrate the operating model; real data sources (Bedrock, CloudTrail, Cost Explorer, Langfuse) are buildable against existing APIs.
 
 ---
 
@@ -401,6 +439,7 @@ ava/
 │       └── scripts/                             # Supporting generation + packaging scripts
 │                                                # Wizard → AI code + Terraform → deployed to AgentCore
 │
+└── internal/                                    # Internal docs, design notes, release planning
 ```
 
 ---
@@ -535,5 +574,5 @@ This project is licensed under the Apache License 2.0 — see [LICENSE](LICENSE)
 ---
 
 <div align="center">
-<sub>Made with ❤️ by the FSI PACE Prototyping Team at AWS</sub>
+<sub>Made with ❤️ by FSI PACE at AWS</sub>
 </div>

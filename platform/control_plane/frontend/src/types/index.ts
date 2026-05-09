@@ -145,6 +145,7 @@ export interface Deployment {
   execution_arn?: string;
   build_id?: string;
   outputs?: Record<string, string>;
+  parameters?: Record<string, string>;
   target_account_id?: string;
   target_role_arn?: string;
   created_by: string;
@@ -226,4 +227,108 @@ export interface AppDeployment {
   endpoint?: string;
   created_at: string;
   updated_at: string;
+}
+
+// --- Guardrails ---
+
+export type GuardrailFilterStrength = 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH';
+export type GuardrailFilterType = 'HATE' | 'INSULTS' | 'SEXUAL' | 'VIOLENCE' | 'MISCONDUCT' | 'PROMPT_ATTACK';
+export type GuardrailPiiAction = 'BLOCK' | 'ANONYMIZE';
+export type GuardrailStatus = 'draft' | 'creating' | 'active' | 'updating' | 'failed' | 'deleting' | 'deleted';
+
+export interface ContentFilterConfig {
+  type: GuardrailFilterType;
+  input_strength: GuardrailFilterStrength;
+  output_strength: GuardrailFilterStrength;
+}
+
+export interface DeniedTopic {
+  name: string;
+  definition: string;
+  examples: string[];
+}
+
+export interface PiiEntityConfig {
+  type: string;
+  action: GuardrailPiiAction;
+}
+
+export interface SensitiveRegexConfig {
+  name: string;
+  pattern: string;
+  description?: string;
+  action: GuardrailPiiAction;
+}
+
+export interface WordFilterConfig {
+  enable_profanity: boolean;
+  blocked_words: string[];
+}
+
+export interface ContextualGroundingConfig {
+  enabled: boolean;
+  grounding_threshold: number;
+  relevance_threshold: number;
+}
+
+export interface GuardrailTemplateCreate {
+  name: string;
+  description?: string;
+  content_filters: ContentFilterConfig[];
+  denied_topics: DeniedTopic[];
+  pii_entities: PiiEntityConfig[];
+  sensitive_regexes: SensitiveRegexConfig[];
+  word_filter?: WordFilterConfig;
+  contextual_grounding?: ContextualGroundingConfig;
+}
+
+export interface GuardrailTemplate {
+  template_id: string;
+  name: string;
+  description?: string;
+  status: GuardrailStatus;
+  guardrail_id?: string;
+  guardrail_arn?: string;
+  guardrail_version?: string;
+  content_filters: ContentFilterConfig[];
+  denied_topics: DeniedTopic[];
+  pii_entities: PiiEntityConfig[];
+  sensitive_regexes: SensitiveRegexConfig[];
+  word_filter?: WordFilterConfig;
+  contextual_grounding?: ContextualGroundingConfig;
+  status_history: { status: string; timestamp: string; message?: string }[];
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GuardrailPreset {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  config: GuardrailTemplateCreate;
+}
+
+export interface GuardrailMetrics {
+  guardrail_id: string;
+  total_invocations: number;
+  blocked_count: number;
+  allowed_count: number;
+  anonymized_count: number;
+  block_rate: number;
+  top_triggered_filter?: string;
+  filter_breakdown: Record<string, number>;
+  time_series: { timestamp: string; invocations: number }[];
+  recent_events: GuardrailEvent[];
+}
+
+export interface GuardrailEvent {
+  timestamp: string;
+  guardrail_id: string;
+  guardrail_name?: string;
+  action: string;
+  filter_type?: string;
+  input_snippet?: string;
+  details?: Record<string, any>;
 }

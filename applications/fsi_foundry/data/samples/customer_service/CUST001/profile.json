@@ -1,17 +1,30 @@
 {
   "customer_id": "CUST001",
-  "name": "Jane Smith",
+  "name": "John Michael Smith",
+  "date_of_birth": "1985-07-22",
+  "ssn": "412-68-9073",
   "account_type": "premium_checking",
   "products": ["checking", "savings", "credit_card", "mortgage"],
   "contact_info": {
-    "email": "[email]",
-    "phone": "[phone_number]"
+    "email": "john.m.smith@bankofamerica.com",
+    "phone": "(555) 234-8901",
+    "address": "1425 Maple Drive, Suite 302, Arlington, VA 22201"
+  },
+  "financial_info": {
+    "credit_card_number": "4532-8901-2345-6789",
+    "card_expiry": "09/2027",
+    "card_cvv": "847",
+    "routing_number": "021000021",
+    "account_number": "9876543210",
+    "balance": 47250.83
   },
   "account_status": "active",
   "member_since": "2018-03-15",
   "recent_transactions": [
     {"id": "TXN001", "date": "2024-01-15", "amount": -250.00, "merchant": "Online Store", "status": "completed"},
-    {"id": "TXN002", "date": "2024-01-14", "amount": 3500.00, "type": "deposit", "status": "completed"},
-    {"id": "TXN003", "date": "2024-01-13", "amount": -89.99, "merchant": "Subscription Service", "status": "disputed"}
+    {"id": "TXN002", "date": "2024-01-14", "amount": 3500.00, "type": "wire_transfer", "from": "Wells Fargo Account ending 4521", "status": "completed"},
+    {"id": "TXN003", "date": "2024-01-13", "amount": -89.99, "merchant": "Subscription Service", "status": "disputed"},
+    {"id": "TXN004", "date": "2024-01-12", "amount": -1500.00, "merchant": "Transfer to account 1234567890", "status": "completed"},
+    {"id": "TXN005", "date": "2024-01-10", "amount": -50000.00, "type": "wire_transfer", "to": "IBAN DE89370400440532013000", "status": "pending_review"}
   ]
 }

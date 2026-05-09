@@ -130,6 +130,16 @@ variable "app_factory_table_arn" {
   type        = string
 }
 
+variable "guardrails_table_name" {
+  description = "Name of the guardrails DynamoDB table"
+  type        = string
+}
+
+variable "guardrails_table_arn" {
+  description = "ARN of the guardrails DynamoDB table"
+  type        = string
+}
+
 variable "deployments_bucket_arn" {
   description = "ARN of the deployments S3 bucket"
   type        = string
