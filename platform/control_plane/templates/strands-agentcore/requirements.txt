@@ -4,8 +4,8 @@
 strands-agent-sdk==0.1.0
 
 # LangChain for Bedrock integration
-langchain==0.3.1
-langchain-core==0.3.9
+langchain==0.3.27
+langchain-core==0.3.63
 langchain-aws==0.2.0
 
 # AWS

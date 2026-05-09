@@ -399,8 +399,8 @@ async def exchange_token(request: Request):
                 "expires_in": tokens.get("expires_in", 3600),
             }
     except Exception as e:
-        logger.error(f"Token exchange failed: {e}")
-        raise HTTPException(status_code=400, detail=f"Token exchange failed: {e}")
+        logger.error(f"Token exchange failed: {e}", exc_info=True)
+        raise HTTPException(status_code=400, detail="Token exchange failed")
 
 
 class StopSessionRequest(BaseModel):
@@ -500,7 +500,8 @@ async def save_settings(req: SettingsRequest):
             item[k] = str(v)
         table.put_item(Item=item)
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to save settings: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to save settings")
 
     # If budget amount changed, update all AWS Budgets
     budget_results = {}
@@ -724,7 +725,8 @@ async def list_registry():
         agents = [i for i in items if not i.get("agent_name", "").startswith("_")]
         return {"agents": agents}
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to list registry: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to list registry")
 
 
 @app.get("/api/registry/{agent_name}")
@@ -738,7 +740,8 @@ async def get_registry_agent(agent_name: str):
             raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
         return item
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get registry agent: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get registry agent")
 
 
 @app.get("/api/agent-registry")
@@ -821,7 +824,8 @@ async def list_sessions(agent_id: str | None = None):
     try:
         sessions = table.scan().get("Items", [])
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to list sessions: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to list sessions")
 
     result = []
     for s in sessions:
@@ -851,7 +855,8 @@ async def list_agent_sessions(agent_name: str):
     try:
         all_sessions = table.scan().get("Items", [])
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to list agent sessions: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to list agent sessions")
     result = []
     for s in all_sessions:
         if _normalize(s.get("agent_name", "")) != norm_target:
@@ -871,7 +876,8 @@ async def list_interventions(limit: int = 50):
         items.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
         return {"interventions": items}
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to list interventions: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to list interventions")
 
 
 @app.get("/api/cost-signals")
@@ -885,7 +891,8 @@ async def get_cost_signals():
         signals.sort(key=lambda x: (sev.get(x.get("severity", "low"), 9), -float(x.get("pct_used", 0))))
         return {"signals": signals}
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get cost signals: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get cost signals")
 
 
 @app.get("/api/obs-signals")
@@ -899,7 +906,8 @@ async def get_obs_signals():
         signals.sort(key=lambda x: (sev.get(x.get("severity", "low"), 9), x.get("agent_name", "")))
         return {"signals": signals}
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get obs signals: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get obs signals")
 
 
 @app.get("/api/obs-signals/{agent_name}/child-alarms")
@@ -928,7 +936,8 @@ async def get_obs_child_alarms(agent_name: str):
             })
         return {"alarms": alarms, "agent_name": agent_name}
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get child alarms: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get child alarms")
 
 
 @app.get("/api/eval-signals")
@@ -942,7 +951,8 @@ async def get_eval_signals():
         signals.sort(key=lambda x: (sev.get(x.get("severity", "low"), 9), x.get("agent_name", "")))
         return {"signals": signals}
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get eval signals: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get eval signals")
 
 # ===================================================================
 # WRITE ENDPOINTS — Stop sessions, set budgets
@@ -1035,6 +1045,7 @@ async def stop_session(req: StopSessionRequest):
         agent_runtime_arn = rt["agentRuntimeArn"]
         agent_name = rt["agentRuntimeName"]
     except ClientError as e:
+        logger.error(f"Runtime lookup failed: {e}", exc_info=True)
         raise HTTPException(status_code=404, detail=f"Runtime {req.agent_runtime_id} not found")
 
     data_client = _get_client("bedrock-agentcore")
@@ -1103,7 +1114,8 @@ async def stop_all_sessions(req: StopAllSessionsRequest):
             _notify_creator_of_stop(req.agent_name, req.reason, req.admin_user, ", ".join(stopped_ids))
         return result
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=f"Lambda invoke failed: {e}")
+        logger.error(f"Lambda invoke failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Lambda invoke failed")
 
 
 @app.post("/api/registry/set-budget")
@@ -1120,7 +1132,8 @@ async def set_budget(req: SetBudgetRequest):
             ExpressionAttributeValues={":b": str(req.monthly_budget_usd), ":now": now})
         return {"status": "ok", "agent_name": req.agent_name, "monthly_budget_usd": req.monthly_budget_usd}
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to set budget: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to set budget")
 
 # ===================================================================
 # KILL SWITCH ENDPOINTS — Revoke/restore Bedrock access for all agents
@@ -1142,7 +1155,8 @@ async def kill_switch_status():
         result = _json.loads(payload["body"]) if isinstance(payload.get("body"), str) else payload
         return result
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=f"Kill switch status failed: {e}")
+        logger.error(f"Kill switch status failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Kill switch status failed")
 
 
 @app.post("/api/kill-switch/revoke")
@@ -1172,7 +1186,8 @@ async def kill_switch_revoke(req: KillSwitchRequest):
             raise HTTPException(status_code=payload["statusCode"], detail=result.get("error", "Lambda error"))
         return result
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=f"Kill switch revoke failed: {e}")
+        logger.error(f"Kill switch revoke failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Kill switch revoke failed")
 
 
 @app.post("/api/kill-switch/restore")
@@ -1202,7 +1217,8 @@ async def kill_switch_restore(req: KillSwitchRequest):
             raise HTTPException(status_code=payload["statusCode"], detail=result.get("error", "Lambda error"))
         return result
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=f"Kill switch restore failed: {e}")
+        logger.error(f"Kill switch restore failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Kill switch restore failed")
 
 
 @app.post("/api/kill-switch/revoke-agent")
@@ -1235,7 +1251,8 @@ async def kill_switch_revoke_agent(req: AgentRevokeRequest):
             raise HTTPException(status_code=payload["statusCode"], detail=result.get("error", "Lambda error"))
         return result
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=f"Agent revoke failed: {e}")
+        logger.error(f"Agent revoke failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Agent revoke failed")
 
 
 @app.post("/api/kill-switch/restore-agent")
@@ -1268,7 +1285,8 @@ async def kill_switch_restore_agent(req: AgentRevokeRequest):
             raise HTTPException(status_code=payload["statusCode"], detail=result.get("error", "Lambda error"))
         return result
     except ClientError as e:
-        raise HTTPException(status_code=500, detail=f"Agent restore failed: {e}")
+        logger.error(f"Agent restore failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Agent restore failed")
 
 # ===================================================================
 # SYNC ENDPOINT — Populates DynamoDB from AWS services

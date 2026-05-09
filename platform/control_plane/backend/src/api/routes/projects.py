@@ -101,10 +101,12 @@ async def generate_project(
                             f"Field '{field}' not found in secret '{langfuse_server.secret_name}'"
                         )
                 except ClientError as e:
-                    logger.error(f"Failed to retrieve Langfuse secret key: {e}")
+                    # Log only error code, not full exception (may contain secret context)
+                    error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+                    logger.error(f"Failed to retrieve Langfuse secret key (code={error_code})")
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"Failed to retrieve Langfuse secret key from Secrets Manager: {e.response['Error']['Code']}"
+                        detail=f"Failed to retrieve Langfuse secret key from Secrets Manager: {error_code}"
                     )
 
         # 3. Select and load template
