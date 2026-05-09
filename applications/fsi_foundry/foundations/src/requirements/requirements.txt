@@ -9,9 +9,9 @@ pydantic==2.9.2
 pydantic-settings==2.6.0
 
 # LangChain & LangGraph - pinned versions that work together
-langchain==0.3.14
+langchain==0.3.27
 langchain-aws==0.2.10
-langchain-core==0.3.29
+langchain-core==0.3.63
 langgraph==0.2.60
 
 # AWS SDK (compatible with langchain-aws 0.2.10)
@@ -31,7 +31,7 @@ opentelemetry-instrumentation-langchain>=0.30.0
 # extract_pdf_text tool in foundations/src/tools/s3_retriever*.py so that
 # agents read real extracted text instead of trying to mentally parse
 # base64-encoded PDF bytes (which was unreliable).
-pypdf>=4.0.0
+pypdf>=5.2.0
 
 # =============================================================================
 # Optional Dependencies
