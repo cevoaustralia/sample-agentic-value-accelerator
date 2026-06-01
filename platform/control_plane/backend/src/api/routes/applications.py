@@ -143,6 +143,31 @@ async def deploy_foundry_use_case(req: FoundryDeployRequest, _=RBACDepends(requi
         merged_params["GUARDRAIL_ID"] = req.guardrail_id
         merged_params["GUARDRAIL_VERSION"] = req.guardrail_version or "DRAFT"
 
+    # AgentCore CloudWatch observability flags. Independent of Langfuse — when
+    # enabled, the runtime module wires APPLICATION_LOGS to CloudWatch Logs
+    # and TRACES to X-Ray, and (optionally) creates the per-region fleet
+    # dashboard. Defaults to false to preserve existing behavior; the UI
+    # only sets these when the operator opts in.
+    def _bool_str(v):
+        return "true" if str(v).lower() in ("true", "1", "yes") else "false"
+
+    for src_key, dst_key in (
+        ("enable_agentcore_observability", "ENABLE_AGENTCORE_OBSERVABILITY"),
+        ("enable_xray_transaction_search", "ENABLE_XRAY_TRANSACTION_SEARCH"),
+        ("create_fleet_dashboard",         "CREATE_FLEET_DASHBOARD"),
+    ):
+        if src_key in (req.parameters or {}):
+            merged_params[dst_key] = _bool_str(req.parameters[src_key])
+
+    # When AgentCore observability is on, also flip ENABLE_TRACING so the
+    # container's OTel SDK starts up and emits in-agent spans (LangGraph nodes,
+    # Bedrock calls, tool calls) via ADOT auto-instrumentation to CloudWatch.
+    # Don't override if Langfuse already set it true — both modes coexist;
+    # telemetry.py picks Langfuse export when LANGFUSE_HOST is set, otherwise
+    # ADOT/CloudWatch.
+    if merged_params.get("ENABLE_AGENTCORE_OBSERVABILITY") == "true":
+        merged_params.setdefault("ENABLE_TRACING", "true")
+
     # Provision per-use-case Langfuse project if foundation stack provides it
     langfuse_host = foundation_outputs.get("langfuse_host")
     langfuse_secret_name = foundation_outputs.get("langfuse_secret_name")
@@ -315,6 +340,18 @@ async def deploy_foundry_from_git(req: FoundryDeployFromGitRequest, _=RBACDepend
     if req.guardrail_id:
         git_params["GUARDRAIL_ID"] = req.guardrail_id
         git_params["GUARDRAIL_VERSION"] = req.guardrail_version or "DRAFT"
+
+    def _bool_str(v):
+        return "true" if str(v).lower() in ("true", "1", "yes") else "false"
+    for src_key, dst_key in (
+        ("enable_agentcore_observability", "ENABLE_AGENTCORE_OBSERVABILITY"),
+        ("enable_xray_transaction_search", "ENABLE_XRAY_TRANSACTION_SEARCH"),
+        ("create_fleet_dashboard",         "CREATE_FLEET_DASHBOARD"),
+    ):
+        if src_key in (req.parameters or {}):
+            git_params[dst_key] = _bool_str(req.parameters[src_key])
+    if git_params.get("ENABLE_AGENTCORE_OBSERVABILITY") == "true":
+        git_params.setdefault("ENABLE_TRACING", "true")
 
     deploy_req = DeploymentCreate(
         deployment_name=req.deployment_name,

@@ -13,7 +13,9 @@ export default function DeploymentList() {
   const [regionFilter, setRegionFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<'deployment_name' | 'status' | 'aws_region' | 'created_at'>('created_at');
+  // Default sort: status ascending — surfaces failed/in-progress rows first
+  // so anomalies are visible without scrolling on long lists.
+  const [sortKey, setSortKey] = useState<'deployment_name' | 'status' | 'aws_region' | 'created_at'>('status');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const navigate = useNavigate();
 
@@ -169,11 +171,20 @@ export default function DeploymentList() {
             { key: 'destroyed', label: 'Destroyed', match: ['destroyed', 'destroying'], bg: 'bg-slate-50', border: 'border-slate-200/60', text: 'text-slate-500' },
           ] as const).map((s) => {
             const count = deployments.filter(d => (s.match as readonly string[]).includes(d.status)).length;
+            const isActive = (s.match as readonly string[]).includes(statusFilter);
             return (
-              <div key={s.key} className={`card ${s.bg} ${s.border}`}>
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => {
+                  // Toggle: clicking the active chip clears the filter.
+                  setStatusFilter(isActive ? '' : (s.match[0] || ''));
+                }}
+                className={`card text-left ${s.bg} ${s.border} cursor-pointer transition-all hover:shadow-sm hover:-translate-y-0.5 ${isActive ? 'ring-2 ring-offset-1 ring-slate-400' : ''}`}
+              >
                 <div className={`text-3xl font-semibold ${s.text}`}>{count}</div>
                 <div className="text-sm text-slate-500 mt-1">{s.label}</div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -265,7 +276,24 @@ export default function DeploymentList() {
                   .filter(d => !typeFilter || getDeploymentType(d.template_id) === typeFilter)
                   .filter(d => !nameFilter || d.deployment_name.toLowerCase().includes(nameFilter.toLowerCase()))
                   .filter(d => !regionFilter || d.aws_region === regionFilter)
+                  // Client-side status filter — applied in addition to the server-side
+                  // filter on initial fetch. Lets the chip-toggle UX feel instant.
+                  .filter(d => !statusFilter || d.status === statusFilter)
                   .sort((a, b) => {
+                    // When sorting by status, surface anomalies first (failed →
+                    // in-progress → deployed → destroyed) instead of alphabetical.
+                    if (sortKey === 'status') {
+                      const order: Record<string, number> = {
+                        failed: 0, pending: 1, validating: 1, packaging: 1,
+                        deploying: 1, verifying: 1,
+                        deployed: 2, delivered: 2,
+                        destroying: 3, destroyed: 4,
+                      };
+                      const av = order[a.status] ?? 99;
+                      const bv = order[b.status] ?? 99;
+                      const cmp = av - bv;
+                      return sortDir === 'asc' ? cmp : -cmp;
+                    }
                     const aVal = a[sortKey] ?? '';
                     const bVal = b[sortKey] ?? '';
                     const cmp = String(aVal).localeCompare(String(bVal));

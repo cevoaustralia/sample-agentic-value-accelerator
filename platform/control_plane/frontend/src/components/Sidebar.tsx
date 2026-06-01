@@ -3,7 +3,7 @@ import { useRef, useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useUser } from '../contexts/UserContext';
 
-type SectionKey = 'apps' | 'aaas' | 'capabilities' | 'observability' | 'govern';
+type SectionKey = 'plan' | 'apps' | 'aaas' | 'capabilities' | 'observability' | 'govern';
 
 export default function Sidebar() {
   const location = useLocation();
@@ -16,9 +16,9 @@ export default function Sidebar() {
   const [expanded, setExpanded] = useState<Record<SectionKey, boolean>>(() => {
     try {
       const raw = localStorage.getItem('sidebar.expanded');
-      if (raw) return { apps: true, aaas: true, capabilities: true, observability: true, govern: true, ...JSON.parse(raw) };
+      if (raw) return { plan: true, apps: true, aaas: true, capabilities: true, observability: true, govern: true, ...JSON.parse(raw) };
     } catch { /* noop */ }
-    return { apps: true, aaas: true, capabilities: true, observability: true, govern: true };
+    return { plan: true, apps: true, aaas: true, capabilities: true, observability: true, govern: true };
   });
   useEffect(() => {
     try { localStorage.setItem('sidebar.expanded', JSON.stringify(expanded)); } catch { /* noop */ }
@@ -28,7 +28,7 @@ export default function Sidebar() {
   const [flyout, setFlyout] = useState<SectionKey | null>(null);
   const [flyoutTop, setFlyoutTop] = useState(0);
   const profileRef = useRef<HTMLDivElement>(null);
-  const iconRefs = useRef<Record<SectionKey, HTMLDivElement | null>>({ apps: null, aaas: null, capabilities: null, observability: null, govern: null });
+  const iconRefs = useRef<Record<SectionKey, HTMLDivElement | null>>({ plan: null, apps: null, aaas: null, capabilities: null, observability: null, govern: null });
   const flyoutRef = useRef<HTMLDivElement>(null);
 
   const isActive = (path: string) => location.pathname === path;
@@ -131,6 +131,12 @@ export default function Sidebar() {
 
   // Flyout items per section (collapsed sidebar)
   const flyoutItems: Record<SectionKey, { to: string; label: string }[]> = {
+    plan: [
+      { to: '/maturity-assessment', label: 'Maturity Assessment' },
+      { to: '/operating-model', label: 'Operating Model' },
+      { to: '/use-cases', label: 'Use Cases' },
+      { to: '/business-cases', label: 'Business Cases' },
+    ],
     apps: [
       { to: '/applications/fsi-foundry', label: 'FSI Foundry' },
       { to: '/applications/reference-implementations', label: 'Reference Apps' },
@@ -151,8 +157,12 @@ export default function Sidebar() {
       { to: '/observability?tab=langfuse', label: 'Langfuse' },
     ],
     govern: [
-      { to: '/govern', label: 'Command Center' },
-      { to: '/govern/models', label: 'Model Registry' },
+      { to: '/govern/command-center', label: 'Command Center' },
+      { to: '/govern/trust-stack', label: 'Trust Stack' },
+      { to: '/govern/fleet', label: 'Fleet Overview' },
+      { to: '/govern/risk', label: 'Risk Management' },
+      { to: '/govern/models', label: 'Model Management' },
+      { to: '/govern/compliance', label: 'Compliance' },
       { to: '/govern/finops', label: 'Cost & FinOps' },
       { to: '/govern/audit', label: 'Audit & Incidents' },
     ],
@@ -200,7 +210,15 @@ export default function Sidebar() {
 
           <div className="pt-2">
             {!isCollapsed && <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">Plan</div>}
-            {navLink('/accelerator-guide', 'Guidance', 'M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18', isActive('/accelerator-guide') || isActive('/strategy'))}
+            {sectionHeader('plan', 'Plan', 'M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z', '/plan', '/plan')}
+            {!isCollapsed && expanded.plan && (
+              <div className="mt-0.5 space-y-0.5">
+                {subLink('/maturity-assessment', 'Maturity Assessment', isActive('/maturity-assessment'))}
+                {subLink('/operating-model', 'Operating Model', isActive('/operating-model'))}
+                {subLink('/use-cases', 'Use Cases', isActive('/use-cases'))}
+                {subLink('/business-cases', 'Business Cases', isActive('/business-cases'))}
+              </div>
+            )}
           </div>
 
           <div className="pt-2">
@@ -241,6 +259,7 @@ export default function Sidebar() {
 
           <div className="pt-2">
             {!isCollapsed && <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">Secure</div>}
+            {navLink('/secure/service-onboarding', 'Service Onboarding', 'M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z', isActivePrefix('/secure/service-onboarding'))}
             {navLink('/secure/guardrails', 'Guardrails', 'M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.75h-.152c-3.196 0-6.1-1.248-8.25-3.285z', isActivePrefix('/secure/guardrails'))}
             {navLink('/secure/policy', 'Policy', 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z', isActive('/secure/policy'))}
           </div>
@@ -261,8 +280,12 @@ export default function Sidebar() {
             {sectionHeader('govern', 'Govern', 'M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z', '/govern', '/govern')}
             {!isCollapsed && expanded.govern && (
               <div className="mt-0.5 space-y-0.5">
-                {subLink('/govern', 'Command Center', location.pathname === '/govern')}
-                {subLink('/govern/models', 'Model Registry', isActivePrefix('/govern/models'))}
+                {subLink('/govern/command-center', 'Command Center', isActivePrefix('/govern/command-center'))}
+                {subLink('/govern/trust-stack', 'Trust Stack', isActivePrefix('/govern/trust-stack'))}
+                {subLink('/govern/fleet', 'Fleet Overview', isActivePrefix('/govern/fleet'))}
+                {subLink('/govern/risk', 'Risk Management', isActivePrefix('/govern/risk'))}
+                {subLink('/govern/models', 'Model Management', isActivePrefix('/govern/models'))}
+                {subLink('/govern/compliance', 'Compliance', isActivePrefix('/govern/compliance'))}
                 {subLink('/govern/finops', 'Cost & FinOps', isActivePrefix('/govern/finops'))}
                 {subLink('/govern/audit', 'Audit & Incidents', isActivePrefix('/govern/audit'))}
               </div>

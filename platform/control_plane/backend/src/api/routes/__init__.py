@@ -14,6 +14,11 @@ from api.routes.users import router as users_router
 from api.routes.codecommit import router as codecommit_router
 from api.routes.frontier_agents import router as frontier_agents_router
 from api.routes.guardrails import router as guardrails_router
+from api.routes.prioritization import router as prioritization_router
+from api.routes.maturity import router as maturity_router
+from api.routes.business_cases import router as business_cases_router
+from api.routes.operating_model import router as operating_model_router
+from api.routes.service_approval import router as service_approval_router
 
 __all__ = [
     "projects_router",
@@ -28,4 +33,9 @@ __all__ = [
     "codecommit_router",
     "frontier_agents_router",
     "guardrails_router",
+    "prioritization_router",
+    "maturity_router",
+    "business_cases_router",
+    "operating_model_router",
+    "service_approval_router",
 ]

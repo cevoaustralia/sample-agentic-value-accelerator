@@ -29,7 +29,27 @@ class Settings(BaseSettings):
     AWS_REGION: str = Field(default="us-east-1")
     DEPLOYMENTS_TABLE_NAME: str = Field(default="fsi-control-plane-deployments")
     GUARDRAILS_TABLE_NAME: str = Field(default="fsi-control-plane-guardrails")
+    PRIORITIZATION_TABLE_NAME: str = Field(default="fsi-control-plane-prioritization")
+    MATURITY_TABLE_NAME: str = Field(default="fsi-control-plane-maturity")
+    BUSINESS_CASES_TABLE_NAME: str = Field(default="fsi-control-plane-business-cases")
+    OPERATING_MODEL_TABLE_NAME: str = Field(default="fsi-control-plane-operating-model")
     APP_FACTORY_TABLE_NAME: str = Field(default="fsi-control-plane-app-factory")
+    SERVICE_APPROVAL_TABLE_NAME: str = Field(
+        default="",
+        description="DynamoDB table for service-approval (service onboarding) runs"
+    )
+    SERVICE_APPROVAL_BUCKET: str = Field(
+        default="",
+        description="S3 bucket holding service-approval per-phase artifacts"
+    )
+    SERVICE_APPROVAL_STATE_MACHINE_ARN: str = Field(
+        default="",
+        description="Step Functions state machine ARN that runs the service-approval pipeline"
+    )
+    SERVICE_APPROVAL_LOCAL_ROOT: str = Field(
+        default="",
+        description="Local filesystem root for the dev simulator (used when DDB/S3 are not configured)"
+    )
     S3_DELIVERY_BUCKET: str = Field(default="fsi-control-plane-deployments")
     S3_BUCKET_NAME: str = Field(
         default="",

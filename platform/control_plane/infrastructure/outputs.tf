@@ -54,6 +54,11 @@ output "ecr_repository_url" {
   value       = module.ecr.repository_url
 }
 
+output "service_approval_runner_ecr_repository_url" {
+  description = "ECR repository URL for the service-approval (Service Onboarding) runner image"
+  value       = module.service_approval.ecr_repository_url
+}
+
 # ============================================================================
 # ECS Outputs
 # ============================================================================

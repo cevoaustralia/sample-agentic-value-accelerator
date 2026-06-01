@@ -37,6 +37,9 @@ class PipelineInput:
     guardrail_version: str = ""
     submission_id: str = ""
     app_factory_table_name: str = ""
+    enable_agentcore_observability: str = "false"
+    enable_xray_transaction_search: str = "false"
+    create_fleet_dashboard: str = "false"
 
     def to_sfn_parameters(self) -> Dict[str, str]:
         """Return the UPPERCASE dict consumed by $.parameters in the SFN."""
@@ -52,6 +55,9 @@ class PipelineInput:
             "GUARDRAIL_VERSION":      d["guardrail_version"],
             "SUBMISSION_ID":          d["submission_id"],
             "APP_FACTORY_TABLE_NAME": d["app_factory_table_name"],
+            "ENABLE_AGENTCORE_OBSERVABILITY": d["enable_agentcore_observability"],
+            "ENABLE_XRAY_TRANSACTION_SEARCH": d["enable_xray_transaction_search"],
+            "CREATE_FLEET_DASHBOARD":         d["create_fleet_dashboard"],
         }
         return {k: ("" if v is None else str(v)) for k, v in out.items()}
 
@@ -75,6 +81,9 @@ class PipelineInput:
             "guardrail_version":      p.get("GUARDRAIL_VERSION", ""),
             "submission_id":          p.get("SUBMISSION_ID", ""),
             "app_factory_table_name": p.get("APP_FACTORY_TABLE_NAME", ""),
+            "enable_agentcore_observability": p.get("ENABLE_AGENTCORE_OBSERVABILITY", "false"),
+            "enable_xray_transaction_search": p.get("ENABLE_XRAY_TRANSACTION_SEARCH", "false"),
+            "create_fleet_dashboard":         p.get("CREATE_FLEET_DASHBOARD", "false"),
         }
         known.update(overrides)
         return cls(**known)

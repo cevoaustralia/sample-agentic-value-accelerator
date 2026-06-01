@@ -31,11 +31,41 @@ if [ -n "${SERP_KEY:-}" ] && [ "$SERP_KEY" != "" ]; then
     --region "${AWS_REGION:-us-east-1}" || echo "Warning: Failed to set SERP API key"
 fi
 
+# Amplify backend-cli (ampx) calls globalThis.crypto.randomUUID(), which only
+# exists on Node 20+. The default CodeBuild aarch64 image ships Node 18, so
+# `npx ampx sandbox` fails with "ReferenceError: crypto is not defined".
+# Detect the build's CPU arch and upgrade in place when needed.
+NODE_VER=$(node --version 2>/dev/null | sed 's/v//' | cut -d. -f1 || echo 0)
+if [ -z "$NODE_VER" ] || [ "$NODE_VER" -lt 20 ]; then
+  ARCH=$(uname -m)
+  case "$ARCH" in
+    aarch64|arm64) NODE_ARCH="linux-arm64" ;;
+    x86_64)        NODE_ARCH="linux-x64" ;;
+    *)             echo "Unsupported arch: $ARCH"; exit 1 ;;
+  esac
+  echo "Upgrading Node.js (current: $(node --version 2>/dev/null || echo none), arch: $NODE_ARCH)..."
+  curl -fsSL "https://nodejs.org/dist/v22.15.0/node-v22.15.0-${NODE_ARCH}.tar.xz" | tar -xJ -C /usr/local --strip-components=1
+  echo "Node.js upgraded to: $(node --version)"
+fi
+
 # Install Amplify CLI if not present
 if ! command -v ampx &>/dev/null; then
   echo "Installing Amplify CLI..."
   npm install -g @aws-amplify/backend-cli@latest
 fi
+
+# The MCP server stacks bundle a recent aws-cdk-lib that emits cloud assembly
+# schema 53.x. CodeBuild's pre-installed CDK CLI (≤2.1100) only reads up to
+# schema 48 and bails with: "This CDK CLI is not compatible with the CDK
+# library used by your application." Pin a CLI new enough to read modern
+# manifests. Always upgrade — comparing versions in bash is fragile.
+echo "Upgrading CDK CLI to latest (was: $(cdk --version 2>/dev/null || echo none))..."
+npm install -g aws-cdk@latest
+echo "CDK CLI: $(cdk --version)"
+# Note: each `deploy:*` npm script also strips its local node_modules/aws-cdk
+# right after `npm install`, because the per-stack package-lock.json pins an
+# old aws-cdk (2.1032-2.1034) that ./node_modules/.bin/cdk would resolve to
+# instead of the global CLI we just installed. Stripping forces global resolve.
 
 # Ensure CDK is bootstrapped in this account/region
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)

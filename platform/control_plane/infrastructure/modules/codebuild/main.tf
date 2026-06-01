@@ -271,7 +271,10 @@ resource "aws_iam_role_policy" "codebuild_iac_provisioning" {
           "elasticfilesystem:*",
           "servicediscovery:*",
           "xray:*",
-          "autoscaling:*"
+          "autoscaling:*",
+          "cloudwatch:*",
+          "application-signals:*",
+          "cloudtrail:*"
         ]
         Resource = "*"
       }
@@ -315,7 +318,7 @@ resource "aws_codebuild_project" "deployment" {
   description            = "Executes IaC commands for AVA deployments"
   service_role           = aws_iam_role.codebuild.arn
   build_timeout          = 60
-  concurrent_build_limit = 60
+  concurrent_build_limit = 10
 
   artifacts {
     type = "NO_ARTIFACTS"

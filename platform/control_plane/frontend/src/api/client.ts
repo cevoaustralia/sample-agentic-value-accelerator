@@ -17,6 +17,11 @@ import type {
   GuardrailTemplateCreate,
   GuardrailPreset,
   GuardrailMetrics,
+  ServiceApprovalRun,
+  ServiceApprovalRunCreate,
+  ServiceApprovalFileTree,
+  ServiceApprovalFileContent,
+  AwsService,
 } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -129,24 +134,21 @@ export const getTemplate = async (templateId: string): Promise<Template> => {
 };
 
 export const getTemplateStats = async (): Promise<TemplateStats> => {
-  const response = await client.get<{
-    total_templates: number;
-    pattern_types: Record<string, number>;
-    frameworks: string[];
-    deployment_patterns: string[];
-  }>('/api/v1/templates/stats');
-
-  // Convert pattern_types object to array of keys
-  return {
-    total_templates: response.data.total_templates,
-    pattern_types: Object.keys(response.data.pattern_types),
-    frameworks: response.data.frameworks,
-    deployment_patterns: response.data.deployment_patterns
-  };
+  const response = await client.get<TemplateStats>('/api/v1/templates/stats');
+  return response.data;
 };
 
 export const bootstrapProject = async (request: BootstrapRequest): Promise<Blob> => {
   const response = await client.post('/api/v1/bootstrap', request, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+export const downloadTemplate = async (templateId: string, iac?: string): Promise<Blob> => {
+  const params = iac ? { iac } : {};
+  const response = await client.get(`/api/v1/templates/${templateId}/download`, {
+    params,
     responseType: 'blob',
   });
   return response.data;
@@ -194,6 +196,17 @@ export const deploymentsApi = {
 
   getDeploymentLogs: async (id: string): Promise<{ deployment_id: string; build_id: string; logs: string }> => {
     const response = await client.get<{ deployment_id: string; build_id: string; logs: string }>(`/api/v1/deployments/${id}/logs`);
+    return response.data;
+  },
+
+  getRuntimeLogs: async (id: string): Promise<{
+    deployment_id: string;
+    log_group: string;
+    fleet_dashboard_url: string;
+    observability_console_url: string;
+    logs: string;
+  }> => {
+    const response = await client.get(`/api/v1/deployments/${id}/runtime-logs`);
     return response.data;
   },
 
@@ -346,6 +359,17 @@ export const frontierAgentsApi = {
     const response = await client.post<Deployment>('/api/v1/frontier-agents/deploy', data);
     return response.data;
   },
+
+  federate: async (data: {
+    agent_id: string;
+    operator_app_url: string;
+  }): Promise<{ signin_url: string; operator_app_url: string; expires_in_seconds: number }> => {
+    const response = await client.post<{ signin_url: string; operator_app_url: string; expires_in_seconds: number }>(
+      '/api/v1/frontier-agents/federate',
+      data,
+    );
+    return response.data;
+  },
 };
 
 // CodeCommit API
@@ -407,4 +431,550 @@ export const guardrailsApi = {
     const response = await client.get<GuardrailPreset[]>('/api/v1/guardrails/presets');
     return response.data;
   },
+};
+
+// Prioritization API ---------------------------------------------------------
+
+export type PrioritizationAIType = 'Traditional ML' | 'Generative AI' | 'Agentic AI';
+export type PrioritizationComplexity = 'Low' | 'Medium' | 'High';
+export type PrioritizationAutomationScope = 'Augmentation' | 'Co-pilot' | 'Full Autonomy';
+export type PrioritizationIntegrationDepth = 'Single-system batch' | 'API-connected real-time' | 'Multi-system orchestration';
+export type UseCaseStatus = 'Concept' | 'Active' | 'Pilot' | 'Production' | 'Paused' | 'Archived';
+export type GoNoGo = 'GO' | 'CONDITIONAL GO' | 'NO GO';
+
+export interface BusinessValueScores {
+  revenue_impact: number;
+  cost_savings: number;
+  productivity_gains: number;
+  customer_experience: number;
+  scalability_potential: number;
+}
+export interface TechnicalFeasibilityScores {
+  data_readiness: number;
+  technical_complexity: number;
+  integration_requirements: number;
+  time_to_value: number;
+  talent_availability: number;
+}
+export interface RiskGovernanceScores {
+  regulatory_compliance: number;
+  data_privacy_security: number;
+  ethical_bias_risk: number;
+  model_reliability: number;
+  autonomous_decision_risk: number;
+}
+export interface OrgReadinessScores {
+  data_infrastructure: number;
+  process_maturity: number;
+  change_management: number;
+  executive_sponsorship: number;
+  cross_functional_collab: number;
+}
+export interface StrategicAlignmentScores {
+  mission_criticality: number;
+  competitive_advantage: number;
+  innovation_potential: number;
+}
+export interface CostEfficiencyScores {
+  implementation_cost: number;
+  ongoing_operational_cost: number;
+  roi_timeline: number;
+}
+export interface PrioritizationScores {
+  business_value: BusinessValueScores;
+  technical_feasibility: TechnicalFeasibilityScores;
+  risk_governance: RiskGovernanceScores;
+  org_readiness: OrgReadinessScores;
+  strategic_alignment: StrategicAlignmentScores;
+  cost_efficiency: CostEfficiencyScores;
+}
+export interface DimensionWeights {
+  business_value: number;
+  technical_feasibility: number;
+  risk_governance: number;
+  org_readiness: number;
+  strategic_alignment: number;
+  cost_efficiency: number;
+}
+export interface ComputedScore {
+  dimension_subtotals: DimensionWeights;
+  composite: number;
+  risk_score: number;
+  readiness_score: number;
+  go_no_go: GoNoGo;
+}
+
+export interface UseCase {
+  use_case_id: string;
+  name: string;
+  description: string;
+  ai_type: PrioritizationAIType;
+  business_domain: string;
+  complexity: PrioritizationComplexity;
+  automation_scope: PrioritizationAutomationScope;
+  integration_depth: PrioritizationIntegrationDepth;
+  business_owner: string;
+  technical_owner: string;
+  target_go_live: string;
+  status: UseCaseStatus;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+  scores: PrioritizationScores;
+  weights: DimensionWeights;
+  computed?: ComputedScore | null;
+}
+
+export interface UseCaseCreate {
+  name: string;
+  description?: string;
+  ai_type?: PrioritizationAIType;
+  business_domain?: string;
+  complexity?: PrioritizationComplexity;
+  automation_scope?: PrioritizationAutomationScope;
+  integration_depth?: PrioritizationIntegrationDepth;
+  business_owner?: string;
+  technical_owner?: string;
+  target_go_live?: string;
+  status?: UseCaseStatus;
+  scores?: PrioritizationScores;
+  weights?: DimensionWeights;
+}
+
+export interface PrioritizationFramework {
+  dimension_weights: DimensionWeights;
+  sub_weights: Record<string, Record<string, number>>;
+  thresholds: Record<string, Record<string, string>>;
+}
+
+export const prioritizationApi = {
+  framework: async (): Promise<PrioritizationFramework> => {
+    const response = await client.get<PrioritizationFramework>('/api/v1/prioritization/framework');
+    return response.data;
+  },
+  list: async (status?: UseCaseStatus): Promise<UseCase[]> => {
+    const params = status ? { status } : {};
+    const response = await client.get<UseCase[]>('/api/v1/prioritization', { params });
+    return response.data;
+  },
+  get: async (id: string): Promise<UseCase> => {
+    const response = await client.get<UseCase>(`/api/v1/prioritization/${id}`);
+    return response.data;
+  },
+  create: async (data: UseCaseCreate): Promise<UseCase> => {
+    const response = await client.post<UseCase>('/api/v1/prioritization', data);
+    return response.data;
+  },
+  update: async (id: string, data: Partial<UseCaseCreate>): Promise<UseCase> => {
+    const response = await client.put<UseCase>(`/api/v1/prioritization/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: string): Promise<UseCase> => {
+    const response = await client.delete<UseCase>(`/api/v1/prioritization/${id}`);
+    return response.data;
+  },
+};
+
+// Maturity Assessment API ----------------------------------------------------
+
+export type AssessmentStatus = 'Draft' | 'In Progress' | 'Complete' | 'Archived';
+
+export interface MaturityWeights {
+  people: number;
+  process: number;
+  technology: number;
+  data: number;
+  governance: number;
+  strategy: number;
+}
+
+export interface DimensionResult {
+  label: string;
+  answered: number;
+  total: number;
+  average: number;
+  weighted_contribution: number;
+  maturity_level: number;
+}
+
+export interface ComputedMaturity {
+  dimensions: Record<string, DimensionResult>;
+  composite: number;
+  maturity_level: number;
+  answered: number;
+  total: number;
+  completion: number;
+}
+
+export interface MaturityAssessment {
+  assessment_id: string;
+  name: string;
+  description: string;
+  organization: string;
+  assessor: string;
+  status: AssessmentStatus;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+  scores: Record<string, number>;
+  weights: MaturityWeights;
+  computed?: ComputedMaturity | null;
+}
+
+export interface MaturityAssessmentCreate {
+  name: string;
+  description?: string;
+  organization?: string;
+  assessor?: string;
+  status?: AssessmentStatus;
+  scores?: Record<string, number>;
+  weights?: MaturityWeights;
+}
+
+export const maturityApi = {
+  list: async (status?: AssessmentStatus): Promise<MaturityAssessment[]> => {
+    const params = status ? { status } : {};
+    const response = await client.get<MaturityAssessment[]>('/api/v1/maturity', { params });
+    return response.data;
+  },
+  get: async (id: string): Promise<MaturityAssessment> => {
+    const response = await client.get<MaturityAssessment>(`/api/v1/maturity/${id}`);
+    return response.data;
+  },
+  create: async (data: MaturityAssessmentCreate): Promise<MaturityAssessment> => {
+    const response = await client.post<MaturityAssessment>('/api/v1/maturity', data);
+    return response.data;
+  },
+  update: async (id: string, data: Partial<MaturityAssessmentCreate>): Promise<MaturityAssessment> => {
+    const response = await client.put<MaturityAssessment>(`/api/v1/maturity/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: string): Promise<MaturityAssessment> => {
+    const response = await client.delete<MaturityAssessment>(`/api/v1/maturity/${id}`);
+    return response.data;
+  },
+};
+
+// Business Cases API --------------------------------------------------------
+
+export type BusinessCaseStatus = 'Draft' | 'Review' | 'Approved' | 'Rejected' | 'Archived';
+export type IndustrySubSector = 'Retail Banking' | 'Insurance' | 'Capital Markets' | 'Other';
+export type BCAITechnologyType = 'Traditional ML' | 'Generative AI' | 'Agentic AI';
+export type ProjectSize = 'Small' | 'Medium' | 'Large';
+export type NpvDecision = 'POSITIVE NPV - Proceed' | 'NEGATIVE NPV - Reject' | 'BREAKEVEN - Review';
+
+export interface ProjectInputs {
+  sponsor: string;
+  business_unit: string;
+  evaluation_date?: string | null;
+  industry: IndustrySubSector;
+  ai_technology_type: BCAITechnologyType;
+  project_size: ProjectSize;
+  wacc_base: number;
+  technology_risk_premium: number;
+  hurdle_rate: number;
+  tax_rate: number;
+  inflation_rate: number;
+  ramp_y1: number;
+  ramp_y2: number;
+  ramp_y3: number;
+  compliance_adder_pct: number;
+}
+
+export interface CostLineItem {
+  label: string;
+  year_0: number;
+  year_1: number;
+  year_2: number;
+  year_3: number;
+}
+
+export interface BenefitLineItem {
+  label: string;
+  year_1: number;
+  year_2: number;
+  year_3: number;
+}
+
+export interface CostModel {
+  initial: CostLineItem[];
+  operating: CostLineItem[];
+  staffing: CostLineItem[];
+}
+
+export interface BenefitModel {
+  tangible: BenefitLineItem[];
+  intangible: BenefitLineItem[];
+}
+
+export interface RiskScorecard {
+  technical: number;
+  data: number;
+  model: number;
+  regulatory: number;
+  organizational: number;
+  vendor_lockin: number;
+  change_management: number;
+  cybersecurity: number;
+}
+
+export interface RiskWeights extends RiskScorecard {}
+
+export interface CashFlowYear {
+  year: number;
+  benefits: number;
+  costs: number;
+  pre_tax: number;
+  tax_impact: number;
+  after_tax: number;
+  cumulative: number;
+  discount_factor: number;
+  discounted: number;
+}
+
+export interface ComputedFinancials {
+  discount_rate: number;
+  cash_flow: CashFlowYear[];
+  total_benefits: number;
+  total_costs: number;
+  npv: number;
+  irr: number | null;
+  roi: number;
+  payback_years: number | null;
+  benefit_cost_ratio: number;
+  irr_passes_hurdle: boolean;
+  npv_decision: NpvDecision;
+}
+
+export interface ComputedRisk {
+  composite: number;
+  level: string;
+  by_category: Record<string, number>;
+}
+
+export interface ComputedBC {
+  financials: ComputedFinancials;
+  risk: ComputedRisk;
+}
+
+export interface BusinessCase {
+  business_case_id: string;
+  name: string;
+  description: string;
+  status: BusinessCaseStatus;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+  inputs: ProjectInputs;
+  costs: CostModel;
+  benefits: BenefitModel;
+  risk_scores: RiskScorecard;
+  risk_weights: RiskWeights;
+  computed?: ComputedBC | null;
+}
+
+export interface BusinessCaseCreate {
+  name: string;
+  description?: string;
+  status?: BusinessCaseStatus;
+  inputs?: ProjectInputs;
+  costs?: CostModel;
+  benefits?: BenefitModel;
+  risk_scores?: RiskScorecard;
+  risk_weights?: RiskWeights;
+}
+
+export const businessCasesApi = {
+  list: async (status?: BusinessCaseStatus): Promise<BusinessCase[]> => {
+    const params = status ? { status } : {};
+    const response = await client.get<BusinessCase[]>('/api/v1/business-cases', { params });
+    return response.data;
+  },
+  get: async (id: string): Promise<BusinessCase> => {
+    const response = await client.get<BusinessCase>(`/api/v1/business-cases/${id}`);
+    return response.data;
+  },
+  create: async (data: BusinessCaseCreate): Promise<BusinessCase> => {
+    const response = await client.post<BusinessCase>('/api/v1/business-cases', data);
+    return response.data;
+  },
+  update: async (id: string, data: Partial<BusinessCaseCreate>): Promise<BusinessCase> => {
+    const response = await client.put<BusinessCase>(`/api/v1/business-cases/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: string): Promise<BusinessCase> => {
+    const response = await client.delete<BusinessCase>(`/api/v1/business-cases/${id}`);
+    return response.data;
+  },
+};
+
+// Operating Model API ------------------------------------------------------
+
+export type OperatingModelStatus = 'Draft' | 'In Progress' | 'Complete' | 'Archived';
+
+export interface OperatingModelWeights {
+  strategy: number;
+  governance: number;
+  organization: number;
+  people: number;
+  technology: number;
+  process: number;
+  ecosystem: number;
+}
+
+export interface OperatingModelDimensionResult {
+  label: string;
+  answered: number;
+  total: number;
+  average: number;
+  weighted_contribution: number;
+  level: number;
+}
+
+export interface ComputedOperatingModel {
+  dimensions: Record<string, OperatingModelDimensionResult>;
+  composite: number;
+  maturity_level: number;
+  recommended_pattern: string;
+  recommended_governance: string;
+  answered: number;
+  total: number;
+  completion: number;
+  total_investment_m: number;
+}
+
+export interface OperatingModelCapabilityChoice {
+  capability_id: number;
+  placement: 'Centralized' | 'Hub-and-Spoke' | 'Federated';
+  ownership: string;
+}
+
+export interface OperatingModelInvestmentSplit {
+  people_pct: number;
+  technology_pct: number;
+  algorithms_pct: number;
+}
+
+export interface OperatingModelRoadmapPhase {
+  name: string;
+  months: string;
+  investment_m: number;
+  enabled: boolean;
+}
+
+export interface OperatingModel {
+  operating_model_id: string;
+  name: string;
+  description: string;
+  organization: string;
+  designer: string;
+  status: OperatingModelStatus;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+  scores: Record<string, number>;
+  weights: OperatingModelWeights;
+  pattern: string;
+  governance: string;
+  capability_choices: OperatingModelCapabilityChoice[];
+  investment: OperatingModelInvestmentSplit;
+  roadmap: OperatingModelRoadmapPhase[];
+  computed?: ComputedOperatingModel | null;
+}
+
+export interface OperatingModelCreate {
+  name: string;
+  description?: string;
+  organization?: string;
+  designer?: string;
+  status?: OperatingModelStatus;
+  scores?: Record<string, number>;
+  weights?: OperatingModelWeights;
+  pattern?: string;
+  governance?: string;
+  capability_choices?: OperatingModelCapabilityChoice[];
+  investment?: OperatingModelInvestmentSplit;
+  roadmap?: OperatingModelRoadmapPhase[];
+}
+
+export const operatingModelApi = {
+  list: async (status?: OperatingModelStatus): Promise<OperatingModel[]> => {
+    const params = status ? { status } : {};
+    const response = await client.get<OperatingModel[]>('/api/v1/operating-models', { params });
+    return response.data;
+  },
+  get: async (id: string): Promise<OperatingModel> => {
+    const response = await client.get<OperatingModel>(`/api/v1/operating-models/${id}`);
+    return response.data;
+  },
+  create: async (data: OperatingModelCreate): Promise<OperatingModel> => {
+    const response = await client.post<OperatingModel>('/api/v1/operating-models', data);
+    return response.data;
+  },
+  update: async (id: string, data: Partial<OperatingModelCreate>): Promise<OperatingModel> => {
+    const response = await client.put<OperatingModel>(`/api/v1/operating-models/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: string): Promise<OperatingModel> => {
+    const response = await client.delete<OperatingModel>(`/api/v1/operating-models/${id}`);
+    return response.data;
+  },
+};
+
+// Service Approval API ------------------------------------------------------
+
+export const serviceApprovalApi = {
+  listAwsServices: async (): Promise<AwsService[]> => {
+    const response = await client.get<AwsService[]>('/api/v1/service-approval/aws-services');
+    return response.data;
+  },
+
+  list: async (): Promise<ServiceApprovalRun[]> => {
+    const response = await client.get<ServiceApprovalRun[]>('/api/v1/service-approval/runs');
+    return response.data;
+  },
+
+  get: async (slug: string): Promise<ServiceApprovalRun> => {
+    const response = await client.get<ServiceApprovalRun>(`/api/v1/service-approval/runs/${slug}`);
+    return response.data;
+  },
+
+  create: async (data: ServiceApprovalRunCreate): Promise<ServiceApprovalRun> => {
+    const response = await client.post<ServiceApprovalRun>('/api/v1/service-approval/runs', data);
+    return response.data;
+  },
+
+  cancel: async (slug: string): Promise<ServiceApprovalRun> => {
+    const response = await client.post<ServiceApprovalRun>(`/api/v1/service-approval/runs/${slug}/cancel`);
+    return response.data;
+  },
+
+  delete: async (slug: string): Promise<void> => {
+    await client.delete(`/api/v1/service-approval/runs/${slug}`);
+  },
+
+  listFiles: async (slug: string, phase: string): Promise<ServiceApprovalFileTree> => {
+    const response = await client.get<ServiceApprovalFileTree>(
+      `/api/v1/service-approval/runs/${slug}/files`,
+      { params: { phase } }
+    );
+    return response.data;
+  },
+
+  getFile: async (slug: string, path: string): Promise<ServiceApprovalFileContent> => {
+    const response = await client.get<ServiceApprovalFileContent>(
+      `/api/v1/service-approval/runs/${slug}/file`,
+      { params: { path } }
+    );
+    return response.data;
+  },
+
+  downloadAllUrl: (slug: string): string =>
+    `${API_URL}/api/v1/service-approval/runs/${slug}/download`,
+
+  downloadPhaseUrl: (slug: string, phase: string): string =>
+    `${API_URL}/api/v1/service-approval/runs/${slug}/download?phase=${encodeURIComponent(phase)}`,
+
+  downloadFileUrl: (slug: string, path: string): string =>
+    `${API_URL}/api/v1/service-approval/runs/${slug}/file?path=${encodeURIComponent(path)}&download=1`,
 };

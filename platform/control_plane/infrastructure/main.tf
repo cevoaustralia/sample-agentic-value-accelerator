@@ -138,12 +138,49 @@ module "ecs" {
   deployments_table_arn  = module.dynamodb.deployments_table_arn
   deployments_bucket_arn = module.s3.deployments_bucket_arn
   state_machine_arn                 = module.step_functions.state_machine_arn
-  frontier_agents_state_machine_arn = module.frontier_agents_pipeline.state_machine_arn
-  app_factory_table_name            = module.dynamodb.app_factory_table_name
+  frontier_agents_state_machine_arn   = module.frontier_agents_pipeline.state_machine_arn
+  frontier_agents_federation_role_arn = aws_iam_role.frontier_agents_federation.arn
+  app_factory_table_name              = module.dynamodb.app_factory_table_name
   app_factory_table_arn  = module.dynamodb.app_factory_table_arn
-  guardrails_table_name  = module.dynamodb.guardrails_table_name
-  guardrails_table_arn   = module.dynamodb.guardrails_table_arn
-  cors_origins           = concat(["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"], ["https://${module.cloudfront.distribution_domain_name}"], var.domain_name != "" ? ["https://${var.domain_name}"] : [], var.extra_cors_origins)
+  guardrails_table_name     = module.dynamodb.guardrails_table_name
+  guardrails_table_arn      = module.dynamodb.guardrails_table_arn
+  prioritization_table_name = module.dynamodb.prioritization_table_name
+  prioritization_table_arn  = module.dynamodb.prioritization_table_arn
+  maturity_table_name       = module.dynamodb.maturity_table_name
+  maturity_table_arn        = module.dynamodb.maturity_table_arn
+  business_cases_table_name = module.dynamodb.business_cases_table_name
+  business_cases_table_arn  = module.dynamodb.business_cases_table_arn
+  operating_model_table_name = module.dynamodb.operating_model_table_name
+  operating_model_table_arn  = module.dynamodb.operating_model_table_arn
+  service_approval_table_name        = module.service_approval.table_name
+  service_approval_table_arn         = module.service_approval.table_arn
+  service_approval_bucket            = module.service_approval.bucket_name
+  service_approval_bucket_arn        = module.service_approval.bucket_arn
+  service_approval_state_machine_arn = module.service_approval.state_machine_arn
+  cors_origins           = concat(["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"], ["https://${module.cloudfront.distribution_domain_name}"], var.domain_name != "" ? ["https://${var.domain_name}"] : [])
+
+  # Cognito wiring — without these the backend's RBAC layer falls into a
+  # dev-mode bypass that returns Role.ADMIN for every JWT. See modules/ecs/main.tf.
+  cognito_user_pool_id        = module.cognito.user_pool_id
+  cognito_user_pool_client_id = module.cognito.user_pool_client_id
+
+  tags = var.tags
+}
+
+# ============================================================================
+# Service Approval (Service Onboarding) Module
+# DDB + S3 + ECR + ECS task def + SFN for the 9-phase service-approval pipeline
+# ============================================================================
+
+module "service_approval" {
+  source = "./modules/service_approval"
+
+  name_prefix        = local.name_prefix
+  environment        = var.environment
+  vpc_id             = local.vpc_id
+  private_subnet_ids = local.private_subnet_ids
+  # Module creates its own ECS cluster (avoids a circular dep with module.ecs,
+  # which receives this module's table/bucket/SFN as inputs).
 
   tags = var.tags
 }
@@ -327,16 +364,28 @@ module "cognito" {
   user_pool_name = var.cognito_user_pool_name
   enable_mfa     = var.cognito_enable_mfa
 
-  # Callback URLs
-  callback_urls = [
-    "http://localhost:5173",
-    "https://${var.domain_name}"
-  ]
+  # Seed admin@example.com / demo@example.com if requested. Useful for
+  # fresh stamps so the first login works without a manual cognito-idp call.
+  seed_demo_users      = var.seed_demo_users
+  demo_admin_password  = var.demo_admin_password
+  demo_viewer_password = var.demo_viewer_password
 
-  logout_urls = [
+  # Callback URLs. Always include the CloudFront default DNS so the UI works
+  # before/without a custom domain. Only append the custom domain when
+  # var.domain_name is non-empty — otherwise we'd emit "https://" which is
+  # an invalid Cognito callback (Cognito accepts it on create but rejects
+  # any future update, requiring a manual UI fix).
+  callback_urls = compact([
     "http://localhost:5173",
-    "https://${var.domain_name}"
-  ]
+    "https://${module.cloudfront.distribution_domain_name}",
+    var.domain_name != "" ? "https://${var.domain_name}" : "",
+  ])
+
+  logout_urls = compact([
+    "http://localhost:5173",
+    "https://${module.cloudfront.distribution_domain_name}",
+    var.domain_name != "" ? "https://${var.domain_name}" : "",
+  ])
 
   tags = var.tags
 }
@@ -413,4 +462,199 @@ module "codecommit" {
   enable_notifications = var.codecommit_enable_notifications
 
   tags = var.tags
+}
+
+# ============================================================================
+# Frontier Agents — Operator App Federation Role
+# ============================================================================
+# AVA backend assumes this role to mint a console federation URL via
+# signin.aws.amazon.com/federation. Browser opens the URL, AWS console
+# drops the federation cookie on *.app.aws, and the operator app loads
+# already authenticated. Skips the AWS console sign-in step that
+# otherwise blocks deep-linking from AVA.
+#
+# Trust: ECS task role only.
+# Permissions: aidevops:* + securityagent:* on Resource:*  (read/write
+# from the federated session — same scope as a logged-in console admin).
+
+resource "aws_iam_role" "frontier_agents_federation" {
+  name = "${local.name_prefix}-frontier-agents-federation"
+
+  # max_session_duration is irrelevant here: AWS hard-caps role-chaining
+  # (ECS task role -> this role) at 3600s regardless of this setting.
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Principal = { AWS = module.ecs.task_role_arn }
+        Action    = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy" "frontier_agents_federation" {
+  name = "frontier-agents-app-access"
+  role = aws_iam_role.frontier_agents_federation.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "aidevops:*",
+          "securityagent:*",
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Permission for the ECS task role to assume the federation role.
+resource "aws_iam_role_policy" "ecs_task_assume_federation" {
+  name = "assume-federation-role"
+  role = element(split("/", module.ecs.task_role_arn), 1)
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "sts:AssumeRole"
+        Resource = aws_iam_role.frontier_agents_federation.arn
+      }
+    ]
+  })
+}
+
+# ============================================================================
+# Docker Hub credentials secret (optional)
+# ============================================================================
+# Created when both dockerhub_username and dockerhub_token are non-empty.
+# The langfuse foundation-stack buildspec reads `dockerhub-credentials` from
+# Secrets Manager to authenticate docker.io pulls — doubles the anonymous
+# 100/6hr cap to 200/6hr and eliminates the toomanyrequests failures we hit
+# every time langfuse is deployed against a fresh control-plane account.
+#
+# Leaving both vars empty skips creation; anonymous pulls still work for
+# low-volume scenarios. Set them in your gitignored terraform.tfvars to opt in.
+resource "aws_secretsmanager_secret" "dockerhub_credentials" {
+  count = var.dockerhub_username != "" && var.dockerhub_token != "" ? 1 : 0
+
+  name        = "dockerhub-credentials"
+  description = "Docker Hub PAT for langfuse module image pulls (read-only public repos)"
+
+  tags = var.tags
+}
+
+resource "aws_secretsmanager_secret_version" "dockerhub_credentials" {
+  count = var.dockerhub_username != "" && var.dockerhub_token != "" ? 1 : 0
+
+  secret_id = aws_secretsmanager_secret.dockerhub_credentials[0].id
+  secret_string = jsonencode({
+    username = var.dockerhub_username
+    token    = var.dockerhub_token
+  })
+}
+
+# ============================================================================
+# AgentCore X-Ray observability prereq (account+region one-time setup)
+# ============================================================================
+# Foundry agentcore deploys provision aws_cloudwatch_log_delivery for traces.
+# X-Ray must be pointed at CloudWatch Logs and allowed to write to the
+# aws/spans log group BEFORE any agentcore deploy runs. Without these two
+# settings, every agentcore deploy fails its terraform apply on the first
+# null_resource.xray_trace_segment_destination.
+#
+# Both are account+region-scoped, idempotent on subsequent applies.
+data "aws_caller_identity" "xray_prereq" {}
+
+# Pre-create aws/spans so X-Ray's policy validation has a concrete target on
+# the first apply in a fresh account/region. Without this, the
+# UpdateTraceSegmentDestination call can return AccessDeniedException
+# ("XRay does not have permission to call PutLogEvents on the aws/spans
+# Log Group") because the group hasn't been auto-created yet.
+resource "aws_cloudwatch_log_group" "aws_spans" {
+  name              = "aws/spans"
+  retention_in_days = 30
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_cloudwatch_log_resource_policy" "xray_to_cwlogs" {
+  policy_name = "AWSServiceRoleForXRayLogs"
+  policy_document = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "TransactionSearchXRayAccess"
+      Effect    = "Allow"
+      Principal = { Service = "xray.amazonaws.com" }
+      Action    = "logs:PutLogEvents"
+      Resource = [
+        "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.xray_prereq.account_id}:log-group:aws/spans:*",
+        "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.xray_prereq.account_id}:log-group:/aws/application-signals/data:*",
+      ]
+      Condition = {
+        ArnLike = {
+          "aws:SourceArn" = "arn:aws:xray:${var.aws_region}:${data.aws_caller_identity.xray_prereq.account_id}:*"
+        }
+        StringEquals = {
+          "aws:SourceAccount" = data.aws_caller_identity.xray_prereq.account_id
+        }
+      }
+    }]
+  })
+
+  depends_on = [aws_cloudwatch_log_group.aws_spans]
+}
+
+# update-trace-segment-destination is not exposed by the AWS provider yet,
+# so we bootstrap it via local-exec. Idempotent: skips when destination is
+# already CloudWatchLogs. Retries on AccessDeniedException to absorb
+# resource-policy propagation lag (5-30s typical) on a cold account.
+resource "null_resource" "xray_trace_segment_destination" {
+  triggers = { region = var.aws_region }
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      CURRENT=$(aws xray get-trace-segment-destination --region ${var.aws_region} --query 'Destination' --output text 2>/dev/null || echo "")
+      if [ "$CURRENT" = "CloudWatchLogs" ]; then
+        echo "X-Ray destination already CloudWatchLogs; skipping."
+        exit 0
+      fi
+      ATTEMPTS=0
+      MAX_ATTEMPTS=8
+      while : ; do
+        ATTEMPTS=$((ATTEMPTS + 1))
+        if OUT=$(aws xray update-trace-segment-destination --destination CloudWatchLogs --region ${var.aws_region} 2>&1); then
+          echo "X-Ray destination set to CloudWatchLogs."
+          exit 0
+        fi
+        if echo "$OUT" | grep -qi "AccessDeniedException"; then
+          if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
+            echo "update-trace-segment-destination still AccessDenied after $ATTEMPTS attempts: $OUT" >&2
+            exit 1
+          fi
+          SLEEP=$((ATTEMPTS * 5))
+          echo "Resource policy not yet effective (attempt $ATTEMPTS/$MAX_ATTEMPTS); sleeping $${SLEEP}s..."
+          sleep "$SLEEP"
+          continue
+        fi
+        echo "update-trace-segment-destination failed: $OUT" >&2
+        exit 1
+      done
+    EOT
+  }
+  depends_on = [
+    aws_cloudwatch_log_group.aws_spans,
+    aws_cloudwatch_log_resource_policy.xray_to_cwlogs,
+  ]
 }
