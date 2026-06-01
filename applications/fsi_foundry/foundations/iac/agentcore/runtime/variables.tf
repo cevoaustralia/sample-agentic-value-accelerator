@@ -78,3 +78,33 @@ variable "guardrail_version" {
   type        = string
   default     = ""
 }
+
+variable "enable_agentcore_observability" {
+  description = "Wire AgentCore runtime APPLICATION_LOGS to CloudWatch Logs and TRACES to X-Ray (Transaction Search). Independent of Langfuse."
+  type        = bool
+  default     = false
+}
+
+variable "agentcore_log_retention_days" {
+  description = "Retention (in days) for the AgentCore runtime CloudWatch log group"
+  type        = number
+  default     = 30
+}
+
+variable "enable_xray_transaction_search" {
+  description = "One-time per-account/region setup: create the X-Ray resource policy and switch trace segment destination to CloudWatch Logs. Set true on the first deployment in a new account/region only."
+  type        = bool
+  default     = false
+}
+
+variable "create_fleet_dashboard" {
+  description = "Create the AVA AgentCore fleet CloudWatch dashboard (one per region). Flip on for exactly one deployment per region — the dashboard auto-discovers all AgentCore runtimes via SEARCH() expressions."
+  type        = bool
+  default     = false
+}
+
+variable "fleet_dashboard_name" {
+  description = "Name of the fleet CloudWatch dashboard"
+  type        = string
+  default     = "AVA-AgentCore-Fleet"
+}

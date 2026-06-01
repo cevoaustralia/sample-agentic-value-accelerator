@@ -156,7 +156,7 @@ async def global_exception_handler(request: Request, exc):
 
 
 # Import and include routers
-from api.routes import projects_router, langfuse_router, health_router, templates_router, bootstrap_router, deployments_router, applications_router, app_factory_router, users_router, codecommit_router, frontier_agents_router, guardrails_router
+from api.routes import projects_router, langfuse_router, health_router, templates_router, bootstrap_router, deployments_router, applications_router, app_factory_router, users_router, codecommit_router, frontier_agents_router, guardrails_router, prioritization_router, maturity_router, business_cases_router, operating_model_router, service_approval_router
 
 # Include routers
 app.include_router(projects_router, prefix=settings.API_PREFIX)
@@ -171,6 +171,11 @@ app.include_router(users_router, prefix=settings.API_PREFIX)
 app.include_router(codecommit_router, prefix=settings.API_PREFIX)
 app.include_router(frontier_agents_router, prefix=settings.API_PREFIX)
 app.include_router(guardrails_router, prefix=settings.API_PREFIX)
+app.include_router(prioritization_router, prefix=settings.API_PREFIX)
+app.include_router(maturity_router, prefix=settings.API_PREFIX)
+app.include_router(business_cases_router, prefix=settings.API_PREFIX)
+app.include_router(operating_model_router, prefix=settings.API_PREFIX)
+app.include_router(service_approval_router, prefix=settings.API_PREFIX)
 
 # Include routers with stage prefix for API Gateway (e.g., /dev, /prod)
 if settings.ROOT_PATH:
@@ -186,6 +191,11 @@ if settings.ROOT_PATH:
     app.include_router(codecommit_router, prefix=f"{settings.ROOT_PATH}{settings.API_PREFIX}")
     app.include_router(frontier_agents_router, prefix=f"{settings.ROOT_PATH}{settings.API_PREFIX}")
     app.include_router(guardrails_router, prefix=f"{settings.ROOT_PATH}{settings.API_PREFIX}")
+    app.include_router(prioritization_router, prefix=f"{settings.ROOT_PATH}{settings.API_PREFIX}")
+    app.include_router(maturity_router, prefix=f"{settings.ROOT_PATH}{settings.API_PREFIX}")
+    app.include_router(business_cases_router, prefix=f"{settings.ROOT_PATH}{settings.API_PREFIX}")
+    app.include_router(operating_model_router, prefix=f"{settings.ROOT_PATH}{settings.API_PREFIX}")
+    app.include_router(service_approval_router, prefix=f"{settings.ROOT_PATH}{settings.API_PREFIX}")
 
 
 if __name__ == "__main__":

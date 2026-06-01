@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { deploymentsApi } from '../api/client';
 import type { Deployment } from '../types';
+import { openOperatorApp } from '../lib/operatorAppLauncher';
 
 interface AgentCard {
   id: string;
@@ -38,7 +39,7 @@ const AWS_AGENTS: AgentCard[] = [
     description: 'Proactive, context-aware application security across the development lifecycle: design security review, code review on pull requests, and on-demand penetration testing that runs multi-step attack scenarios against live web apps and APIs.',
     domain: 'Application Security',
     domainColor: 'red',
-    status: 'Coming Soon',
+    status: 'Available',
     logo: '/logos/aws-security-agent.svg',
     capabilities: ['Design security review', 'Code security review (PRs)', 'On-demand penetration testing', 'OWASP Top Ten + 13 risk categories', 'Ready-to-apply remediation PRs'],
     integrations: ['GitHub', 'IAM Identity Center', 'CloudTrail'],
@@ -186,7 +187,7 @@ export default function AwsAgentsCatalog() {
                         {operatorUrl && (
                           <button
                             type="button"
-                            onClick={() => window.open(operatorUrl, '_blank')}
+                            onClick={() => openOperatorApp(agent.id, operatorUrl)}
                             className="text-xs py-2 rounded-lg font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-colors inline-flex items-center justify-center gap-1.5"
                           >
                             Open Operator App

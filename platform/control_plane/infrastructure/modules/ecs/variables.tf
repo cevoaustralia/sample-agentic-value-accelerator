@@ -140,6 +140,46 @@ variable "guardrails_table_arn" {
   type        = string
 }
 
+variable "prioritization_table_name" {
+  description = "Name of the prioritization DynamoDB table"
+  type        = string
+}
+
+variable "prioritization_table_arn" {
+  description = "ARN of the prioritization DynamoDB table"
+  type        = string
+}
+
+variable "maturity_table_name" {
+  description = "Name of the maturity assessment DynamoDB table"
+  type        = string
+}
+
+variable "maturity_table_arn" {
+  description = "ARN of the maturity assessment DynamoDB table"
+  type        = string
+}
+
+variable "business_cases_table_name" {
+  description = "Name of the business cases DynamoDB table"
+  type        = string
+}
+
+variable "business_cases_table_arn" {
+  description = "ARN of the business cases DynamoDB table"
+  type        = string
+}
+
+variable "operating_model_table_name" {
+  description = "Name of the operating model DynamoDB table"
+  type        = string
+}
+
+variable "operating_model_table_arn" {
+  description = "ARN of the operating model DynamoDB table"
+  type        = string
+}
+
 variable "deployments_bucket_arn" {
   description = "ARN of the deployments S3 bucket"
   type        = string
@@ -155,4 +195,50 @@ variable "frontier_agents_state_machine_arn" {
   description = "Step Functions state machine ARN for the Frontier Agents (AaaS) pipeline."
   type        = string
   default     = ""
+}
+
+variable "service_approval_table_name" {
+  description = "Service-approval DynamoDB table name"
+  type        = string
+  default     = ""
+}
+
+variable "service_approval_table_arn" {
+  description = "Service-approval DynamoDB table ARN"
+  type        = string
+  default     = ""
+}
+
+variable "service_approval_bucket" {
+  description = "Service-approval artifacts S3 bucket"
+  type        = string
+  default     = ""
+}
+
+variable "service_approval_bucket_arn" {
+  description = "Service-approval artifacts S3 bucket ARN"
+  type        = string
+  default     = ""
+}
+
+variable "service_approval_state_machine_arn" {
+  description = "Service-approval Step Functions state machine ARN"
+  type        = string
+  default     = ""
+}
+
+variable "frontier_agents_federation_role_arn" {
+  description = "ARN of the IAM role the backend assumes to mint AWS console federation URLs for the frontier agents (DevOps, Security) operator apps. Empty string if federation isn't configured."
+  type        = string
+  default     = ""
+}
+
+variable "cognito_user_pool_id" {
+  description = "Cognito user pool ID for backend JWT validation. Without this the backend falls back to a dev-mode auth bypass that returns Role.ADMIN for every caller."
+  type        = string
+}
+
+variable "cognito_user_pool_client_id" {
+  description = "Cognito user pool client ID (the audience claim the backend validates against)."
+  type        = string
 }

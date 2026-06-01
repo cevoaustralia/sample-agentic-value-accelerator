@@ -23,7 +23,6 @@ from services.deployment_service import DeploymentService
 from services.s3_delivery_service import S3DeliveryService
 from services.template_catalog import TemplateCatalog
 from services.pipeline_service import PipelineService
-from services.template_job_service import has_pipeline_jobs
 from services.langfuse_provisioning import LangfuseProvisioningService
 from core.config import settings
 from fastapi import Depends as RBACDepends
@@ -86,19 +85,53 @@ async def create_deployment(req: DeploymentCreate, _=RBACDepends(require_role(Ro
     if not template:
         raise HTTPException(status_code=404, detail=f"Template not found: {req.template_id}")
 
-    # Validate IaC type exists in template
-    if not template.supports_deployment_pattern(req.iac_type):
-        valid = [p.id for p in template.metadata.deployment_patterns]
-        raise HTTPException(status_code=400, detail=f"IaC type '{req.iac_type}' not supported. Valid: {valid}")
-
     # Validate required parameters
     for param in template.metadata.parameters or []:
-        if param.required and param.name not in req.parameters:
-            raise HTTPException(status_code=400, detail=f"Required parameter missing: {param.name}")
+        if param.get("required") and param.get("name") not in req.parameters:
+            raise HTTPException(status_code=400, detail=f"Required parameter missing: {param.get('name')}")
 
     # Auto-inject control plane VPC for foundation stack
     if template.metadata.type == "foundation" and settings.CONTROL_PLANE_VPC_ID:
         req.parameters.setdefault("existing_vpc_id", settings.CONTROL_PLANE_VPC_ID)
+
+    # Auto-rewrite project_name for foundation-stack with a SHORT account suffix.
+    #
+    # The langfuse module bakes its inputs into a chain of resources:
+    #   var.name = "${var.project_name}-langfuse"        (root TF)
+    #   replication_group_id = "${var.name}-langfuse-cache"   (inside module)  → 40-char cap
+    #   aws_lb_target_group.name = "${var.name}-langfuse"     (inside module)  → 32-char cap
+    #
+    # So `${project_name}-langfuse-langfuse-cache` and `${project_name}-langfuse-langfuse`
+    # are the binding constraints. The default project_name="foundation" produces
+    # "foundation-langfuse-langfuse-cache" (34) and "foundation-langfuse-langfuse" (28),
+    # which fit. But re-deploys on the same account collide on those globally-named
+    # resources, so we need uniqueness.
+    #
+    # Strategy: replace the user-supplied project_name with `fdn-{last-6-of-account}`
+    # (10 chars total). That gives:
+    #   ${project_name}-langfuse-langfuse-cache = "fdn-739298-langfuse-langfuse-cache" = 34 ✓ (≤40)
+    #   ${project_name}-langfuse-langfuse       = "fdn-739298-langfuse-langfuse"       = 28 ✓ (≤32)
+    # Idempotent: skips if project_name is already "fdn-{6digits}".
+    if template.metadata.type == "foundation":
+        try:
+            account_id = boto3.client("sts").get_caller_identity()["Account"]
+            account_suffix = account_id[-6:]
+            short_project = f"fdn-{account_suffix}"
+            current_project = req.parameters.get("project_name", "foundation")
+            if current_project != short_project:
+                req.parameters["project_name"] = short_project
+            # deployment_name is just the human-facing label (used in DDB), not
+            # baked into resources. Keep it readable + unique per account.
+            if not req.deployment_name.endswith(account_suffix):
+                req.deployment_name = f"{req.deployment_name}-{account_suffix}"
+            logger.info(
+                f"Foundation-stack deploy: deployment_name={req.deployment_name} "
+                f"project_name={req.parameters['project_name']}"
+            )
+        except Exception as e:
+            # If STS call fails, fall through with the original name. Better to
+            # let the deploy fail with a clear collision error than to mask it.
+            logger.warning(f"Could not derive account suffix for foundation stack: {e}")
 
     # Resolve foundation dependencies
     if template.metadata.dependencies:
@@ -140,55 +173,35 @@ async def create_deployment(req: DeploymentCreate, _=RBACDepends(require_role(Ro
     if req.target_role_arn:
         deployment.target_role_arn = req.target_role_arn
 
-    # Check if template has pipeline jobs
-    if has_pipeline_jobs(template):
-        # Pipeline path: package template to S3, then start Step Functions execution
-        try:
-            s3_svc = get_s3_svc()
-            pattern = template.get_deployment_pattern(req.iac_type)
-            s3_key = s3_svc.deliver_template(
-                template_path=template.path,
-                template_id=req.template_id,
-                deployment_id=deployment.deployment_id,
-                iac_path=pattern.path,
-                parameters=req.parameters,
-                s3_bucket=deployment.s3_bucket,
-            )
-            deployment.s3_key = s3_key
-        except Exception as e:
-            logger.error(f"Template packaging failed: {e}")
-            svc.update_status(deployment.deployment_id, DeploymentStatus.FAILED, error_message=str(e))
-            raise HTTPException(status_code=500, detail=f"Template packaging failed: {e}")
+    # Package template to S3
+    try:
+        s3_svc = get_s3_svc()
+        pattern = template.get_deployment_pattern(req.iac_type)
+        s3_key = s3_svc.deliver_template(
+            template_path=template.path,
+            template_id=req.template_id,
+            deployment_id=deployment.deployment_id,
+            iac_path=pattern.get("path") if pattern else "iac/terraform",
+            parameters=req.parameters,
+            s3_bucket=deployment.s3_bucket,
+        )
+        deployment = svc.update_status(deployment.deployment_id, DeploymentStatus.PACKAGED, "Template packaged")
+        deployment = svc.update_status(deployment.deployment_id, DeploymentStatus.DELIVERED, "Delivered to S3", s3_key=s3_key)
+    except Exception as e:
+        logger.error(f"Delivery failed: {e}")
+        svc.update_status(deployment.deployment_id, DeploymentStatus.FAILED, error_message=str(e))
+        raise HTTPException(status_code=500, detail=f"Delivery failed: {e}")
 
-        try:
-            pipeline_svc = get_pipeline_svc()
-            execution_arn = pipeline_svc.start_pipeline(deployment, template)
-            deployment.execution_arn = execution_arn
-            # Persist the updated fields
-            svc.table.put_item(Item=svc._to_item(deployment))
-        except Exception as e:
-            logger.error(f"Pipeline start failed: {e}")
-            svc.update_status(deployment.deployment_id, DeploymentStatus.FAILED, error_message=str(e))
-            raise HTTPException(status_code=500, detail=f"Pipeline start failed: {e}")
-    else:
-        # Legacy S3 packaging path for templates without jobs
-        try:
-            s3_svc = get_s3_svc()
-            pattern = template.get_deployment_pattern(req.iac_type)
-            s3_key = s3_svc.deliver_template(
-                template_path=template.path,
-                template_id=req.template_id,
-                deployment_id=deployment.deployment_id,
-                iac_path=pattern.path,
-                parameters=req.parameters,
-                s3_bucket=deployment.s3_bucket,
-            )
-            deployment = svc.update_status(deployment.deployment_id, DeploymentStatus.PACKAGED, "Template packaged")
-            deployment = svc.update_status(deployment.deployment_id, DeploymentStatus.DELIVERED, "Delivered to S3", s3_key=s3_key)
-        except Exception as e:
-            logger.error(f"Delivery failed: {e}")
-            svc.update_status(deployment.deployment_id, DeploymentStatus.FAILED, error_message=str(e))
-            raise HTTPException(status_code=500, detail=f"Delivery failed: {e}")
+    # Start the deployment pipeline (Step Functions)
+    try:
+        pipeline_svc = get_pipeline_svc()
+        execution_arn = pipeline_svc.start_pipeline(deployment, template)
+        deployment.execution_arn = execution_arn
+        svc.table.put_item(Item=svc._to_item(deployment))
+    except Exception as e:
+        logger.error(f"Pipeline start failed: {e}")
+        svc.update_status(deployment.deployment_id, DeploymentStatus.FAILED, error_message=str(e))
+        raise HTTPException(status_code=500, detail=f"Pipeline start failed: {e}")
 
     return DeploymentResponse(**deployment.dict())
 
@@ -283,6 +296,42 @@ async def get_deployment_logs(deployment_id: str, _=RBACDepends(require_role(Rol
         raise HTTPException(status_code=500, detail=f"Failed to retrieve logs: {e}")
 
 
+@router.get("/{deployment_id}/runtime-logs")
+async def get_runtime_logs(deployment_id: str, _=RBACDepends(require_role(Role.VIEWER))):
+    """Tail AgentCore runtime APPLICATION_LOGS for a deployment.
+
+    Requires the deployment to have been provisioned with
+    enable_agentcore_observability=true (which sets agentcore_log_group_name in
+    its outputs). Returns 404 if observability isn't enabled on the deployment.
+    """
+    svc = get_deploy_svc()
+    deployment = svc.get_deployment(deployment_id)
+    if not deployment:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+
+    outputs = deployment.outputs or {}
+    log_group = outputs.get("agentcore_log_group_name", "").strip()
+    if not log_group:
+        raise HTTPException(
+            status_code=404,
+            detail="AgentCore observability is not enabled for this deployment.",
+        )
+
+    try:
+        pipeline_svc = get_pipeline_svc()
+        logs = pipeline_svc.get_runtime_logs(log_group)
+        return {
+            "deployment_id": deployment_id,
+            "log_group": log_group,
+            "fleet_dashboard_url": outputs.get("fleet_dashboard_url", ""),
+            "observability_console_url": outputs.get("agentcore_observability_console_url", ""),
+            "logs": logs,
+        }
+    except Exception as e:
+        logger.error(f"Failed to retrieve runtime logs: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve runtime logs: {e}")
+
+
 @router.post("/{deployment_id}/destroy", status_code=200)
 async def destroy_deployment(deployment_id: str, _=RBACDepends(require_role(Role.OPERATOR))):
     """Initiate the offboarding/destroy pipeline for a DEPLOYED deployment.
@@ -315,7 +364,7 @@ async def destroy_deployment(deployment_id: str, _=RBACDepends(require_role(Role
             template_path=template.path,
             template_id=deployment.template_id,
             deployment_id=deployment.deployment_id,
-            iac_path=pattern.path,
+            iac_path=pattern.get("path") if pattern else "iac/terraform",
             parameters=deployment.parameters,
             s3_bucket=deployment.s3_bucket,
         )
@@ -365,7 +414,7 @@ async def redeploy_deployment(deployment_id: str, _=RBACDepends(require_role(Rol
             template_path=template.path,
             template_id=deployment.template_id,
             deployment_id=deployment.deployment_id,
-            iac_path=pattern.path,
+            iac_path=pattern.get("path") if pattern else "iac/terraform",
             parameters=deployment.parameters,
             s3_bucket=deployment.s3_bucket,
         )

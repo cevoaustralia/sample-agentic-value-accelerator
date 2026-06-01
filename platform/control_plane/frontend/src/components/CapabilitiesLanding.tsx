@@ -157,7 +157,7 @@ function FeaturedCard({ item, onClick }: { item: Item; onClick: () => void }) {
       <div className="relative p-5 flex flex-col flex-1">
         <h2 className="text-xl font-bold text-indigo-700 mb-1 group-hover:text-indigo-800 transition-colors">{item.name}</h2>
         <p className="text-sm font-medium text-slate-500 mb-2">{item.tagline}</p>
-        <p className="text-sm text-slate-600 leading-relaxed mb-4 line-clamp-3">{item.description}</p>
+        <p className="text-sm text-slate-600 leading-relaxed mb-4">{item.description}</p>
 
         {item.subItems && (
           <div className="mb-4 space-y-1.5">

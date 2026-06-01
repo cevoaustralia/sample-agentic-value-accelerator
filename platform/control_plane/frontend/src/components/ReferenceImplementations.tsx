@@ -200,7 +200,7 @@ export default function ReferenceImplementations() {
               if (!dep && impl.status === 'Available') {
                 return (
                   <div className="flex gap-2.5 pt-4 border-t border-slate-100">
-                    <button onClick={() => navigate('/docs/ref-impl')} className="btn-secondary text-xs flex-1 py-2">View Documentation</button>
+                    <button onClick={() => navigate('/docs/ref-impl-overview')} className="btn-secondary text-xs flex-1 py-2">View Documentation</button>
                     <button
                       onClick={() => navigate(`/applications/reference-implementations/deploy/${impl.id}`, { state: { impl } })}
                       disabled={!user?.can_deploy}
@@ -214,7 +214,7 @@ export default function ReferenceImplementations() {
               if (!dep) {
                 return (
                   <div className="flex gap-2.5 pt-4 border-t border-slate-100">
-                    <button onClick={() => navigate('/docs/ref-impl')} className="btn-secondary text-xs flex-1 py-2">View Documentation</button>
+                    <button onClick={() => navigate('/docs/ref-impl-overview')} className="btn-secondary text-xs flex-1 py-2">View Documentation</button>
                     <button disabled className="text-xs flex-1 py-2 px-4 rounded-lg bg-slate-100 text-slate-400 font-medium cursor-not-allowed">Coming Soon</button>
                   </div>
                 );
@@ -243,7 +243,7 @@ export default function ReferenceImplementations() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                           </svg>
                         </button>
-                        <button onClick={() => navigate('/docs/ref-impl')} className="btn-secondary text-[11px] py-2">View Documentation</button>
+                        <button onClick={() => navigate('/docs/ref-impl-overview')} className="btn-secondary text-[11px] py-2">View Documentation</button>
                         <button
                           onClick={() => navigate(`/applications/reference-implementations/deploy/${impl.id}`, { state: { impl } })}
                           disabled={!user?.can_deploy}
@@ -252,7 +252,7 @@ export default function ReferenceImplementations() {
                       </>
                     ) : (
                       <>
-                        <button onClick={() => navigate('/docs/ref-impl')} className="btn-secondary text-[11px] py-2">View Documentation</button>
+                        <button onClick={() => navigate('/docs/ref-impl-overview')} className="btn-secondary text-[11px] py-2">View Documentation</button>
                         <button
                           onClick={() => navigate(`/applications/reference-implementations/deploy/${impl.id}`, { state: { impl } })}
                           disabled={!user?.can_deploy}

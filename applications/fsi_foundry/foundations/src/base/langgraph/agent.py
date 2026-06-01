@@ -45,7 +45,11 @@ class LangGraphAgent(ABC):
     model_id: Optional[str] = None
     model_kwargs: Dict[str, Any] = {"temperature": 0.1, "max_tokens": 4096}
     verbose: bool = True
-    max_iterations: int = 2  # Reduced from 5 to prevent iteration bloat in parallel execution
+    max_iterations: int = 10  # Was 5 historically, dropped to 2 in caa6d0dd to fix legacy_migration
+    # parallel-agent timeout. KYC/fraud/surveillance flows do 3-4 sequential S3 tool calls + final
+    # reasoning step (≥4 iterations); 5 was too tight when retries kicked in, so bumping to 10 with
+    # buffer for graceful failures. Real fix for parallel bloat is to cap concurrent agents in the
+    # orchestrator, not per-agent iterations.
 
     def __init__(self, **overrides):
         """
