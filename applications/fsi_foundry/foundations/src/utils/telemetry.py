@@ -54,35 +54,41 @@ def setup_tracing() -> bool:
         logger.info("tracing_disabled", reason="enable_tracing is False")
         return False
 
-    if not settings.langfuse_host or not settings.langfuse_secret_name:
-        logger.warning(
-            "tracing_disabled",
-            reason="langfuse_host or langfuse_secret_name not configured",
-        )
-        return False
+    # Two supported modes:
+    #   1. Langfuse: langfuse_host + langfuse_secret_name set → OTel exports to
+    #      Langfuse's OTLP endpoint via env vars below.
+    #   2. AgentCore CloudWatch (ADOT): no Langfuse vars → leave OTLP env vars
+    #      alone; the container is launched with `opentelemetry-instrument`,
+    #      which auto-configures export to CloudWatch when running inside an
+    #      AgentCore runtime. Framework instrumentations (Strands/LangChain)
+    #      still get initialized below.
+    langfuse_mode = bool(settings.langfuse_host and settings.langfuse_secret_name)
+    if not langfuse_mode:
+        logger.info("tracing_mode", mode="agentcore_adot", reason="no langfuse config")
 
     try:
-        # Fetch API keys from Secrets Manager
-        keys = _fetch_langfuse_keys(settings.langfuse_secret_name, settings.aws_region)
-        public_key = keys.get("langfuse_public_key", "")
-        secret_key = keys.get("langfuse_secret_key", "")
+        if langfuse_mode:
+            # Fetch API keys from Secrets Manager
+            keys = _fetch_langfuse_keys(settings.langfuse_secret_name, settings.aws_region)
+            public_key = keys.get("langfuse_public_key", "")
+            secret_key = keys.get("langfuse_secret_key", "")
 
-        if not public_key or not secret_key:
-            logger.error("tracing_disabled", reason="API keys missing from secret")
-            return False
+            if not public_key or not secret_key:
+                logger.error("tracing_disabled", reason="API keys missing from secret")
+                return False
 
-        # Set env vars for Langfuse SDK and OTEL exporter
-        os.environ["LANGFUSE_HOST"] = settings.langfuse_host
-        os.environ["LANGFUSE_PUBLIC_KEY"] = public_key
-        os.environ["LANGFUSE_SECRET_KEY"] = secret_key
+            # Set env vars for Langfuse SDK and OTEL exporter
+            os.environ["LANGFUSE_HOST"] = settings.langfuse_host
+            os.environ["LANGFUSE_PUBLIC_KEY"] = public_key
+            os.environ["LANGFUSE_SECRET_KEY"] = secret_key
 
-        # Configure OTEL exporter to point at Langfuse's OTEL endpoint
-        # This matches the moxbank pattern: set env vars, then let StrandsTelemetry handle it
-        langfuse_auth = base64.b64encode(
-            f"{public_key}:{secret_key}".encode()
-        ).decode()
-        os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = f"{settings.langfuse_host}/api/public/otel"
-        os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization=Basic {langfuse_auth}"
+            # Configure OTEL exporter to point at Langfuse's OTEL endpoint
+            # This matches the moxbank pattern: set env vars, then let StrandsTelemetry handle it
+            langfuse_auth = base64.b64encode(
+                f"{public_key}:{secret_key}".encode()
+            ).decode()
+            os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = f"{settings.langfuse_host}/api/public/otel"
+            os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization=Basic {langfuse_auth}"
 
         # Initialize Strands OTEL exporter (for Strands agents)
         try:
@@ -103,19 +109,25 @@ def setup_tracing() -> bool:
             logger.debug("langchain_otel_instrumentor_failed", error=str(le))
 
         # Initialize Langfuse v4 client (auto-registers as OTEL span processor
-        # for LangGraph/LangChain agents via @observe or manual tracing)
-        try:
-            from langfuse import get_client
-            _langfuse_client = get_client()
-            if _langfuse_client.auth_check():
-                logger.info("langfuse_client_initialized")
-            else:
-                logger.warning("langfuse_auth_check_failed")
-        except Exception as le:
-            logger.debug("langfuse_client_init_skipped", detail=str(le))
+        # for LangGraph/LangChain agents via @observe or manual tracing).
+        # Skip in ADOT-only mode — there's no Langfuse server to talk to.
+        if langfuse_mode:
+            try:
+                from langfuse import get_client
+                _langfuse_client = get_client()
+                if _langfuse_client.auth_check():
+                    logger.info("langfuse_client_initialized")
+                else:
+                    logger.warning("langfuse_auth_check_failed")
+            except Exception as le:
+                logger.debug("langfuse_client_init_skipped", detail=str(le))
 
         _tracing_initialized = True
-        logger.info("tracing_enabled", langfuse_host=settings.langfuse_host)
+        logger.info(
+            "tracing_enabled",
+            mode="langfuse" if langfuse_mode else "agentcore_adot",
+            langfuse_host=settings.langfuse_host if langfuse_mode else None,
+        )
         return True
 
     except Exception as e:
