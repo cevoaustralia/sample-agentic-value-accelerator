@@ -4,6 +4,8 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar,
 } from 'recharts';
 import { AUDIT_EVENTS, INCIDENT_SUMMARY, RISK_TREND_30D, tooltipStyle } from './mockData';
+import { AuditIncidentsGuide } from './ModuleGuide';
+import { MockDataBadge } from './DataSourceIndicator';
 
 const catBg: Record<string, string> = {
   guardrail:  'bg-blue-50 text-blue-700 border-blue-200',
@@ -66,12 +68,18 @@ export default function AuditIncidents() {
 
         <div className="flex items-end justify-between mt-3 mb-6">
           <div>
-            <h1 className="text-3xl font-semibold text-slate-900 tracking-tight">Audit & Incidents</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-semibold text-slate-900 tracking-tight">Audit & Incidents</h1>
+              <MockDataBadge integration="AWS CloudTrail + Amazon EventBridge" />
+            </div>
             <p className="text-slate-500 mt-1 max-w-2xl">
               Full timeline of guardrail events, incidents, approvals, deployments, and config changes. Every event links to its trace, CloudTrail record, or ticket — exportable as an evidence bundle.
             </p>
           </div>
         </div>
+
+        {/* How to Use Guide */}
+        <AuditIncidentsGuide />
 
         {/* Summary KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
