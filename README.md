@@ -2,7 +2,7 @@
 
 # AVA - Agentic Value Accelerator
 
-**Plan, build, operate, and secure AI agents for financial services on AWS.**
+**Plan, build, operate, secure and govern AI systems for financial services on AWS.**
 
 An open-source platform that unifies use cases, reference apps, apps generation from guided-prompt, managed Frontier Agents, custom agents, and reusable tools on Amazon Bedrock AgentCore.
 
