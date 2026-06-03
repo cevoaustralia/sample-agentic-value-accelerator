@@ -17,7 +17,10 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 INFRA_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 BACKEND_DIR="$REPO_ROOT/platform/control_plane/backend"
 FRONTEND_DIR="$REPO_ROOT/platform/control_plane/frontend"
-RUNNER_DIR="$REPO_ROOT/platform/control_plane/service_approval_runner"
+# Service Approval (AgentCore) module — the v1 SFN+Fargate runner was
+# decommissioned; everything now lives under platform/control_plane/service_approval/.
+SA_DIR="$REPO_ROOT/platform/control_plane/service_approval"
+SA_RUNTIME_DIR="$SA_DIR/runtime"
 
 # ============================================================================
 # Preflight Checks
@@ -66,7 +69,7 @@ echo
 # Step 1: Terraform
 # ============================================================================
 
-echo -e "${BLUE}[1/7] Infrastructure${NC}"
+echo -e "${BLUE}[1/10] Initial infrastructure (DDB, S3, backend ECR, networking)${NC}"
 
 cd "$INFRA_DIR"
 
@@ -152,7 +155,6 @@ rm -f tfplan
 
 # Capture outputs
 ECR_REPO=$(terraform output -raw ecr_repository_url)
-RUNNER_ECR_REPO=$(terraform output -raw service_approval_runner_ecr_repository_url 2>/dev/null || echo "")
 FRONTEND_BUCKET=$(terraform output -raw frontend_bucket_name)
 CLOUDFRONT_ID=$(terraform output -raw cloudfront_distribution_id)
 API_ENDPOINT=$(terraform output -raw api_endpoint)
@@ -172,7 +174,7 @@ echo
 # Step 2: Backend Docker Image
 # ============================================================================
 
-echo -e "${BLUE}[2/7] Backend Docker image${NC}"
+echo -e "${BLUE}[2/10] Backend Docker image${NC}"
 
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -193,52 +195,91 @@ echo -e "${GREEN}  Backend image pushed.${NC}"
 echo
 
 # ============================================================================
-# Step 3: Service-Approval Runner Image
+# Step 3: Service Approval — IAM + ECR
 # ============================================================================
-# The Service Onboarding pipeline launches a Fargate task that pulls this image
-# from ECR. Without it the Step Functions execution fails immediately with
-# CannotPullContainerError. We build & push every deploy so the image stays in
-# sync with the runner source under platform/control_plane/service_approval_runner.
+# The AgentCore runtime resource (Step 5) cannot be created until its
+# container image exists in ECR — but the image (Step 4) cannot be built
+# until the ECR repo exists. We split the runtime stack apply in two so
+# the dependency unwinds cleanly: target ECR + IAM first, push image, then
+# the full apply creates the AgentCore runtime against the now-populated
+# repo. Mirrors the pattern in service_approval/runtime/deploy.sh.
 
-echo -e "${BLUE}[3/7] Service-Approval runner image${NC}"
+echo -e "${BLUE}[3/10] Service Approval — IAM + ECR (terraform target)${NC}"
 
-if [ -z "$RUNNER_ECR_REPO" ]; then
-    echo -e "${YELLOW}  service_approval_runner_ecr_repository_url not in tf outputs — skipping.${NC}"
-    echo -e "${YELLOW}  (Service Onboarding pipeline will fail until the image is pushed.)${NC}"
-elif [ ! -f "$RUNNER_DIR/Dockerfile" ]; then
-    echo -e "${YELLOW}  Runner source not found at $RUNNER_DIR — skipping.${NC}"
-else
-    # Sync the upstream service-onboarding plugin if a local checkout exists.
-    # Skip silently otherwise — the existing ./plugin tree (committed in repo)
-    # is used as-is.
-    if [ -x "$RUNNER_DIR/sync-plugin.sh" ]; then
-        SRC="${SERVICE_ONBOARDING_SRC:-$HOME/dev/LL/service-onboarding}"
-        if [ -d "$SRC" ]; then
-            echo "  Syncing plugin tree from $SRC..."
-            (cd "$RUNNER_DIR" && SERVICE_ONBOARDING_SRC="$SRC" ./sync-plugin.sh > /dev/null)
-        else
-            echo "  Plugin source not at $SRC — using committed ./plugin/."
-        fi
-    fi
+cd "$SA_RUNTIME_DIR"
+terraform init -input=false -upgrade=false > /dev/null
+terraform apply -auto-approve \
+    -target=aws_ecr_repository.agent \
+    -target=aws_iam_role.agentcore \
+    -target=aws_iam_role_policy.agentcore \
+    -target=aws_iam_role_policy_attachment.agentcore_readonly
 
-    echo "  Building linux/amd64 runner image (~600MB, may take several minutes)..."
-    docker build \
-        --platform linux/amd64 \
-        -t "${RUNNER_ECR_REPO}:latest" \
-        "$RUNNER_DIR"
+SA_AGENT_ECR_REPO=$(terraform output -raw ecr_repository_url)
+echo -e "${GREEN}  SA IAM + ECR ready: ${SA_AGENT_ECR_REPO}${NC}"
+echo
 
-    echo "  Pushing runner image to ECR..."
-    docker push "${RUNNER_ECR_REPO}:latest"
+# ============================================================================
+# Step 4: Service Approval — Agent Image
+# ============================================================================
+# AgentCore microVMs require linux/arm64 — building for amd64 trips an
+# "exec format error" at first invocation. Build context is the SA module
+# root so the COPY for plugin/ + agent/ both resolve as siblings.
 
-    echo -e "${GREEN}  Runner image pushed.${NC}"
-fi
+echo -e "${BLUE}[4/10] Service Approval — agent image (linux/arm64)${NC}"
+
+aws ecr get-login-password --region "$AWS_REGION" \
+    | docker login --username AWS --password-stdin "${SA_AGENT_ECR_REPO%/*}" > /dev/null
+
+echo "  Building linux/arm64 agent image..."
+docker build \
+    --platform linux/arm64 \
+    -t "${SA_AGENT_ECR_REPO}:latest" \
+    "$SA_DIR"
+
+echo "  Pushing to ECR..."
+docker push "${SA_AGENT_ECR_REPO}:latest"
+
+echo -e "${GREEN}  SA agent image pushed.${NC}"
+echo
+
+# ============================================================================
+# Step 5: Service Approval — AgentCore Runtime
+# ============================================================================
+# Now that the image exists in ECR, the full apply on the SA runtime stack
+# creates the AgentCore runtime + endpoint. Capture the runtime ARN —
+# Step 6 passes it back to the root infra apply so the backend's
+# create_run() knows where to invoke.
+
+echo -e "${BLUE}[5/10] Service Approval — AgentCore runtime${NC}"
+
+terraform apply -auto-approve
+
+SA_RUNTIME_ARN=$(terraform output -raw agentcore_runtime_arn)
+echo -e "${GREEN}  AgentCore runtime: ${SA_RUNTIME_ARN}${NC}"
+echo
+
+cd "$INFRA_DIR"
+
+# ============================================================================
+# Step 6: Root Infra — wire SA runtime ARN
+# ============================================================================
+# The backend's task definition reads SERVICE_APPROVAL_AGENT_RUNTIME_ARN
+# from env vars set by the root infra apply. Re-apply with the ARN we
+# just captured so the next ECS rolling deploy (Step 8) picks it up.
+
+echo -e "${BLUE}[6/10] Root infra — wire SA runtime ARN${NC}"
+
+terraform apply -auto-approve \
+    -var=service_approval_agent_runtime_arn="$SA_RUNTIME_ARN"
+
+echo -e "${GREEN}  Backend env vars updated.${NC}"
 echo
 
 # ============================================================================
 # Step 4: ECS Deployment
 # ============================================================================
 
-echo -e "${BLUE}[4/7] ECS rolling deployment${NC}"
+echo -e "${BLUE}[7/10] ECS rolling deployment${NC}"
 
 aws ecs update-service \
     --cluster "$ECS_CLUSTER" \
@@ -261,7 +302,7 @@ echo
 # Step 5: Frontend Build
 # ============================================================================
 
-echo -e "${BLUE}[5/7] Frontend build${NC}"
+echo -e "${BLUE}[8/10] Frontend build${NC}"
 
 cat > "$FRONTEND_DIR/.env.production" <<EOF
 VITE_API_URL=${API_ENDPOINT}
@@ -281,7 +322,7 @@ echo
 # Step 6: Frontend Deploy
 # ============================================================================
 
-echo -e "${BLUE}[6/7] Frontend deploy to S3 + CloudFront${NC}"
+echo -e "${BLUE}[9/10] Frontend deploy to S3 + CloudFront${NC}"
 
 aws s3 sync "$FRONTEND_DIR/dist/" "s3://$FRONTEND_BUCKET/" --delete --quiet
 aws cloudfront create-invalidation \
@@ -297,7 +338,7 @@ echo
 # Step 7: Cognito User
 # ============================================================================
 
-echo -e "${BLUE}[7/7] Cognito user${NC}"
+echo -e "${BLUE}[10/10] Cognito user (optional)${NC}"
 
 read -p "  Create a Cognito user? (yes/no): " create_user
 if [ "$create_user" = "yes" ]; then

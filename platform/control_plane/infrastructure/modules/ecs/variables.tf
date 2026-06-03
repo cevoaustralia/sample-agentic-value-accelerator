@@ -221,8 +221,8 @@ variable "service_approval_bucket_arn" {
   default     = ""
 }
 
-variable "service_approval_state_machine_arn" {
-  description = "Service-approval Step Functions state machine ARN"
+variable "service_approval_agent_runtime_arn" {
+  description = "Service-approval AgentCore Runtime ARN. Backend invokes this directly — SFN/Fargate paths are gone post-Phase B decommission."
   type        = string
   default     = ""
 }

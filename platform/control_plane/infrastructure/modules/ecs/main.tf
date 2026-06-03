@@ -189,33 +189,26 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
 }
 
 # Policy for Step Functions access
-resource "aws_iam_role_policy" "ecs_task_step_functions" {
-  name = "step-functions-access"
+# Service-approval Path B: backend's create_run calls
+# bedrock-agentcore:InvokeAgentRuntime against the v2 module's runtime.
+# Scoped to runtimes under this account so the backend can't accidentally
+# invoke arbitrary AgentCore runtimes elsewhere.
+resource "aws_iam_role_policy" "ecs_task_agentcore_invoke" {
+  name = "service-approval-agentcore-invoke"
   role = aws_iam_role.ecs_task.id
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "states:StartExecution",
-          "states:ListExecutions",
-        ]
-        Resource = "arn:aws:states:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:stateMachine:${var.name_prefix}-*"
-      },
-      {
-        # DescribeExecution / StopExecution are scoped to execution ARNs,
-        # not state machine ARNs — IAM treats them as distinct resource
-        # types so they need their own statement.
-        Effect = "Allow"
-        Action = [
-          "states:DescribeExecution",
-          "states:StopExecution",
-        ]
-        Resource = "arn:aws:states:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:execution:${var.name_prefix}-*:*"
-      }
-    ]
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "bedrock-agentcore:InvokeAgentRuntime",
+      ]
+      # Wildcard on runtime-id segment because AgentCore appends a random
+      # suffix at create-time. We can't pin to a specific runtime ARN at
+      # IaC-generation time without circular dependency on the v2 module.
+      Resource = "arn:aws:bedrock-agentcore:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:runtime/*"
+    }]
   })
 }
 
@@ -529,9 +522,11 @@ resource "aws_ecs_task_definition" "main" {
           name  = "SERVICE_APPROVAL_BUCKET"
           value = var.service_approval_bucket
         },
+        # Service-Approval Path B (post-Phase B decommission): backend
+        # invokes AgentCore directly. SFN/Fargate envs are gone.
         {
-          name  = "SERVICE_APPROVAL_STATE_MACHINE_ARN"
-          value = var.service_approval_state_machine_arn
+          name  = "SERVICE_APPROVAL_AGENT_RUNTIME_ARN"
+          value = var.service_approval_agent_runtime_arn
         },
         # Cognito + auth env vars. Without these the backend's _extract_role
         # cannot decode JWTs and falls into a dev-mode bypass that returns

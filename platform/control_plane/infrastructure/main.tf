@@ -156,7 +156,11 @@ module "ecs" {
   service_approval_table_arn         = module.service_approval.table_arn
   service_approval_bucket            = module.service_approval.bucket_name
   service_approval_bucket_arn        = module.service_approval.bucket_arn
-  service_approval_state_machine_arn = module.service_approval.state_machine_arn
+  # Service-approval Path B: backend invokes AgentCore directly. The
+  # runtime ARN is owned by platform/control_plane/service_approval/runtime/
+  # (not a peer of this stack) — capture its terraform output and pass
+  # via tfvars to wire the backend's create_run path.
+  service_approval_agent_runtime_arn = var.service_approval_agent_runtime_arn
   cors_origins           = concat(["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"], ["https://${module.cloudfront.distribution_domain_name}"], var.domain_name != "" ? ["https://${var.domain_name}"] : [])
 
   # Cognito wiring — without these the backend's RBAC layer falls into a
@@ -175,14 +179,13 @@ module "ecs" {
 module "service_approval" {
   source = "./modules/service_approval"
 
-  name_prefix        = local.name_prefix
-  environment        = var.environment
-  vpc_id             = local.vpc_id
-  private_subnet_ids = local.private_subnet_ids
-  # Module creates its own ECS cluster (avoids a circular dep with module.ecs,
-  # which receives this module's table/bucket/SFN as inputs).
-
-  tags = var.tags
+  # Phase B decommission: this module owns DDB + S3 only. The Fargate
+  # runner + SFN orchestration moved to platform/control_plane/service_approval/
+  # runtime/. VPC/subnet inputs no longer needed since DDB+S3 don't run
+  # in a VPC.
+  name_prefix = local.name_prefix
+  environment = var.environment
+  tags        = var.tags
 }
 
 # ============================================================================

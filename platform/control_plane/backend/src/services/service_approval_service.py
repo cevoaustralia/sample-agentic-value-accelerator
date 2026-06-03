@@ -75,14 +75,14 @@ class ServiceApprovalService:
         self,
         table_name: str,
         bucket_name: str,
-        state_machine_arn: str,
         region: str,
+        agent_runtime_arn: str,
         local_artifacts_root: Optional[str] = None,
     ) -> None:
         self.table_name = table_name
         self.bucket_name = bucket_name
-        self.state_machine_arn = state_machine_arn
         self.region = region
+        self.agent_runtime_arn = agent_runtime_arn
         self.local_artifacts_root = Path(local_artifacts_root) if local_artifacts_root else None
 
         try:
@@ -97,9 +97,12 @@ class ServiceApprovalService:
             self._s3 = None
 
         try:
-            self._sfn = boto3.client("stepfunctions", region_name=region)
+            # Data-plane client. Control-plane (bedrock-agentcore-control)
+            # isn't needed from the backend — the v2 Terraform module owns
+            # runtime config.
+            self._agentcore = boto3.client("bedrock-agentcore", region_name=region)
         except Exception:  # pragma: no cover
-            self._sfn = None
+            self._agentcore = None
 
         # local fallback caches
         self._local_runs: Dict[str, ServiceApprovalRun] = {}
@@ -116,8 +119,8 @@ class ServiceApprovalService:
         return bool(self.bucket_name) and self._s3 is not None
 
     @property
-    def _has_sfn(self) -> bool:
-        return bool(self.state_machine_arn) and self._sfn is not None
+    def _has_agentcore(self) -> bool:
+        return bool(self.agent_runtime_arn) and self._agentcore is not None
 
     # -- run CRUD -----------------------------------------------------------
 
@@ -136,35 +139,62 @@ class ServiceApprovalService:
             phases=default_phases(),
         )
         self._save(run)
-        # Trigger the runner.
-        if self._has_sfn:
-            try:
-                resp = self._sfn.start_execution(
-                    stateMachineArn=self.state_machine_arn,
-                    name=slug,
-                    input=json.dumps({
-                        "slug": slug,
-                        "service": req.service,
-                        "framework": req.framework.value,
-                        "testing_mode": req.testing_mode.value,
-                        "bucket": self.bucket_name,
-                        "table": self.table_name,
-                    }),
-                )
-                run.execution_arn = resp.get("executionArn")
-                run.status = RunStatus.RUNNING
-                run.updated_at = _now()
-                self._save(run)
-            except Exception as e:  # pragma: no cover
-                logger.exception("Failed to start step function for %s: %s", slug, e)
-                run.status = RunStatus.FAILED
-                run.error = f"Failed to start runner: {e}"
-                run.updated_at = _now()
-                self._save(run)
+        if self._has_agentcore:
+            self._invoke_agentcore(run, req)
         else:
             # Local simulator
             self._kick_local_simulation(run)
         return run
+
+    def _invoke_agentcore(self, run: ServiceApprovalRun, req: ServiceApprovalRunCreate) -> None:
+        """Invoke the v2 AgentCore runtime to start a pipeline.
+
+        The agent's @app.entrypoint returns within ms (detached pattern:
+        @app.entrypoint kicks off a background thread, returns immediately).
+        We store the session ID as execution_arn so cancel/delete have a
+        handle to identify the run later.
+
+        runtimeSessionId regex requires at least 33 chars; the standard
+        slug shape "<service>-<YYYYMMDDTHHMMSS>" is around 25-30 chars, so
+        we append a deterministic suffix to clear the floor. Determinism
+        matters because cancel_run needs to be able to re-derive the same
+        ID later if it ever gains a stop-session API."""
+        slug = run.slug
+        session_id = f"{slug}-svc-approval-session"
+        if len(session_id) < 33:
+            session_id = session_id + "-padding-bytes"
+
+        payload = json.dumps({
+            "slug": slug,
+            "service": req.service,
+            "framework": req.framework.value,
+            "testing_mode": req.testing_mode.value,
+        }).encode()
+
+        try:
+            resp = self._agentcore.invoke_agent_runtime(
+                agentRuntimeArn=self.agent_runtime_arn,
+                qualifier="DEFAULT",
+                runtimeSessionId=session_id,
+                payload=payload,
+                contentType="application/json",
+                accept="application/json",
+            )
+            # Drain the streaming body — the agent returns a small JSON
+            # ack synchronously, but we MUST iterate to release the conn.
+            for _ in resp.get("response") or []:
+                pass
+            run.execution_arn = session_id
+            run.status = RunStatus.RUNNING
+            run.updated_at = _now()
+            self._save(run)
+            logger.info("AgentCore invoke accepted slug=%s session=%s", slug, session_id)
+        except Exception as e:  # pragma: no cover
+            logger.exception("AgentCore invoke failed for %s: %s", slug, e)
+            run.status = RunStatus.FAILED
+            run.error = f"Failed to start runner: {e}"
+            run.updated_at = _now()
+            self._save(run)
 
     def list_runs(self) -> List[ServiceApprovalRun]:
         if self._has_ddb:
@@ -193,10 +223,6 @@ class ServiceApprovalService:
         else:
             with self._local_lock:
                 runs = sorted(self._local_runs.values(), key=lambda r: r.created_at, reverse=True)
-        # Sweep stale active runs against Step Functions so the list page
-        # reflects real outcomes, not just the last write the runner managed.
-        for run in runs:
-            self._reconcile_with_sfn(run)
         return runs
 
     def get_run(self, slug: str) -> Optional[ServiceApprovalRun]:
@@ -222,26 +248,26 @@ class ServiceApprovalService:
                 if run is None:
                     return None
                 run = run.model_copy(deep=True)
-        # Reconcile against the Step Functions execution if the run is still
-        # marked active. The runner can fail before any artifact is written
-        # (e.g. CannotPullContainerError), in which case nothing else updates
-        # the row and the UI shows a stale "running" forever.
-        self._reconcile_with_sfn(run)
         # refresh file counts from S3 / local fs (lightweight: HEAD-style listing)
         self._refresh_phase_counts(run)
         return run
 
     def cancel_run(self, slug: str) -> Optional[ServiceApprovalRun]:
+        """Mark a run cancelled. AgentCore doesn't expose a synchronous
+        cancel-this-running-invocation API, so the microVM continues until
+        the pipeline finishes naturally or hits the idle timeout (~30 min
+        after the last async task heartbeat). The DDB row reflects user
+        intent immediately so observers know the run is no longer
+        authoritative — same fire-and-forget pattern as delete_run."""
         run = self.get_run(slug)
         if not run:
             return None
         if run.status not in (RunStatus.PENDING, RunStatus.RUNNING):
             return run
-        if self._has_sfn and run.execution_arn:
-            try:
-                self._sfn.stop_execution(executionArn=run.execution_arn, cause="UserCancelled")
-            except Exception:  # pragma: no cover
-                logger.exception("Failed to stop sfn execution %s", run.execution_arn)
+        if run.execution_arn:
+            logger.info("AgentCore session %s marked cancelled (microVM "
+                        "completes naturally — no synchronous stop API)",
+                        run.execution_arn)
         run.status = RunStatus.CANCELLED
         run.updated_at = _now()
         for p in run.phases:
@@ -251,20 +277,21 @@ class ServiceApprovalService:
         return run
 
     def delete_run(self, slug: str) -> bool:
-        """Stop the run if it's still active, drop every S3 artifact under the
-        slug prefix, and remove the DDB record. Returns True if a run existed."""
+        """Drop S3 artifacts under the slug prefix and remove the DDB row.
+
+        AgentCore doesn't expose a synchronous cancel API, so an in-flight
+        pipeline keeps running in its microVM until it finishes naturally
+        or hits the idle timeout. Any stray writes from the still-running
+        pipeline land in an orphaned slug prefix that we just deleted —
+        they become harmless garbage. Fire-and-forget by design."""
         run = self.get_run(slug)
         if not run:
             return False
 
-        # Stop a still-running execution before deleting state.
-        if run.status in (RunStatus.PENDING, RunStatus.RUNNING):
-            if self._has_sfn and run.execution_arn:
-                try:
-                    self._sfn.stop_execution(executionArn=run.execution_arn,
-                                             cause="UserDeleted")
-                except Exception:  # pragma: no cover
-                    logger.exception("Failed to stop sfn execution %s", run.execution_arn)
+        if run.status in (RunStatus.PENDING, RunStatus.RUNNING) and run.execution_arn:
+            logger.info("AgentCore session %s — deleting DDB row + S3 "
+                        "artifacts; microVM completes naturally",
+                        run.execution_arn)
 
         # S3 — paginate and delete every object under <slug>/.
         if self._has_s3:
@@ -432,44 +459,6 @@ class ServiceApprovalService:
     def _from_item(self, item: dict) -> ServiceApprovalRun:
         clean = {k: v for k, v in item.items() if k not in ("pk", "sk")}
         return ServiceApprovalRun.model_validate(clean)
-
-    # Step Functions terminal failure states. SUCCEEDED is intentionally
-    # excluded — the runner's S3 watcher updates the row on the way out, and
-    # we don't want a race where this reconciler flips a still-finalizing run.
-    _SFN_FAILURE_STATES = ("FAILED", "TIMED_OUT", "ABORTED")
-
-    def _reconcile_with_sfn(self, run: ServiceApprovalRun) -> None:
-        """If a run is marked PENDING/RUNNING but the underlying Step Functions
-        execution has terminally failed, flip the row to FAILED. Best-effort:
-        any error here is swallowed so the read path stays available."""
-        if run.status not in (RunStatus.PENDING, RunStatus.RUNNING):
-            return
-        if not (self._has_sfn and run.execution_arn):
-            return
-        try:
-            resp = self._sfn.describe_execution(executionArn=run.execution_arn)
-        except Exception:
-            logger.exception("Failed to describe sfn execution %s", run.execution_arn)
-            return
-
-        sfn_status = resp.get("status")
-        if sfn_status not in self._SFN_FAILURE_STATES:
-            return
-
-        cause = resp.get("cause") or resp.get("error") or sfn_status
-        # Trim long ECS failure JSON to something readable in the UI.
-        if isinstance(cause, str) and len(cause) > 500:
-            cause = cause[:497] + "..."
-
-        run.status = RunStatus.FAILED
-        run.error = f"Runner execution {sfn_status}: {cause}"
-        run.updated_at = _now()
-        for p in run.phases:
-            if p.status == PhaseStatus.RUNNING:
-                p.status = PhaseStatus.FAILED
-                p.completed_at = run.updated_at
-                p.error = run.error
-        self._save(run)
 
     def _refresh_phase_counts(self, run: ServiceApprovalRun) -> None:
         for p in run.phases:
