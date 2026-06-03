@@ -2,7 +2,7 @@
 
 # AVA - Agentic Value Accelerator
 
-**Plan, build, operate, secure and govern AI systems for financial services on AWS.**
+**Plan, build, operate, and secure AI agents for financial services on AWS.**
 
 An open-source platform that unifies use cases, reference apps, apps generation from guided-prompt, managed Frontier Agents, custom agents, and reusable tools on Amazon Bedrock AgentCore.
 
@@ -427,7 +427,7 @@ Real-data sources are wired today for guardrails, deployments, use cases, agents
 |------|----------|-------------|
 | **Platform** | [**Platform Architecture**](platform/docs/architecture/platform-architecture.md) | Full system design with Mermaid diagrams — frontend, backend, CI/CD pipeline, infrastructure modules, per-use-case UI deployment flow |
 | **Platform** | [CI/CD Pipeline](platform/docs/architecture/cicd-pipeline.md) | Dual-source CodeBuild buildspec — Git clone / S3 unzip, Docker build, Terraform apply, UI build, S3 sync, CloudFront invalidation |
-| **Platform** | [Infrastructure Scripts](platform/control_plane/infrastructure/scripts/README.md) | Reference for every shell and Python script used to deploy, tear down, and seed the Control Plane (deploy-full, deploy, destroy, import-existing, seed-codecommit) |
+| **Platform** | [Infrastructure Scripts](platform/control_plane/infrastructure/scripts/README.md) | Reference for every shell and Python script used to deploy, tear down, and seed the Control Plane (deploy-full, destroy, import-existing, seed-codecommit) |
 | **FSI Foundry** | [Architecture & Deployment](applications/fsi_foundry/docs/foundations/README.md) | [Architecture Patterns](applications/fsi_foundry/docs/foundations/architecture/architecture_patterns.md) &#124; [AgentCore Design](applications/fsi_foundry/docs/foundations/architecture/architecture_agentcore.md) &#124; [Deployment Guide](applications/fsi_foundry/docs/foundations/deployment/deployment_patterns.md) |
 | **Reference** | [Market Surveillance](platform/docs/architecture/market-surveillance-architecture.md) | Multi-agent surveillance architecture — [Diagram](applications/reference_implementations/market-surveillance/docs/diagram/architecture.png) |
 | **Reference** | [Shopping Concierge](applications/reference_implementations/shopping-concierge-agent/docs/AGENT_CAPABILITIES_SHOPPING.md) | [Agent Capabilities](applications/reference_implementations/shopping-concierge-agent/docs/AGENT_CAPABILITIES_SHOPPING.md) &#124; [Deployment](applications/reference_implementations/shopping-concierge-agent/docs/DEPLOYMENT.md) &#124; [Data Flow](applications/reference_implementations/shopping-concierge-agent/docs/shopping_data_flow.png) |
@@ -513,7 +513,7 @@ ava/
 │       │   │   ├── state_backend/               # Terraform remote state (S3 + DynamoDB lock)
 │       │   │   └── observability/               # CloudWatch + X-Ray Transaction Search prereqs
 │       │   ├── service_approval_runner/         # Container image for the service-approval phases
-│       │   └── scripts/                         # deploy-full.sh, deploy.sh, destroy.sh, seed-codecommit.sh,
+│       │   └── scripts/                         # deploy-full.sh, destroy.sh, seed-codecommit.sh,
 │       │                                        #   setup-dockerhub-auth.sh
 │       │
 │       ├── templates/                           # 22 Starter Templates (deployed via UI)
@@ -692,7 +692,7 @@ After step 1, sign in to the Control Plane UI to deploy any FSI Foundry use case
 |----------|-------------|
 | [Control Plane](platform/docs/architecture/platform-architecture.md) | Deploy and manage agent applications from the web UI |
 | [Infrastructure](platform/control_plane/infrastructure/README.md) | Terraform modules and deployment architecture |
-| [Infrastructure Scripts](platform/control_plane/infrastructure/scripts/README.md) | `deploy-full.sh`, `deploy.sh`, `destroy.sh`, `import-existing.sh`, `seed-codecommit.sh`, `setup-dockerhub-auth.sh` — usage, modes, troubleshooting |
+| [Infrastructure Scripts](platform/control_plane/infrastructure/scripts/README.md) | `deploy-full.sh`, `destroy.sh`, `import-existing.sh`, `seed-codecommit.sh`, `setup-dockerhub-auth.sh` — usage, modes, troubleshooting |
 | [App Templates](platform/docs/templates/README.md) | All 22 starter templates browsable from the UI — usage, parameters, customization |
 
 ### Applications

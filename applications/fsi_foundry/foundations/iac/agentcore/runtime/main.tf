@@ -298,55 +298,17 @@ resource "null_resource" "agentcore_traces_delivery" {
 # log groups. This is account-wide; only flip the flag on for the first
 # deployment in a given account/region.
 
-# Pre-create aws/spans so X-Ray's policy validation has a concrete target on
-# the first apply in a fresh account/region. Without this, the
-# UpdateTraceSegmentDestination call can return AccessDeniedException
-# ("XRay does not have permission to call PutLogEvents on the aws/spans
-# Log Group") because the group hasn't been auto-created yet.
-resource "aws_cloudwatch_log_group" "aws_spans" {
-  count = var.enable_xray_transaction_search ? 1 : 0
-
-  name              = "aws/spans"
-  retention_in_days = 30
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
-resource "aws_cloudwatch_log_resource_policy" "xray_transaction_search" {
-  count = var.enable_xray_transaction_search ? 1 : 0
-
-  policy_name = "AWSLogsXrayTransactionSearchAccess"
-  policy_document = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "TransactionSearchXRayAccess"
-        Effect = "Allow"
-        Principal = {
-          Service = "xray.amazonaws.com"
-        }
-        Action = "logs:PutLogEvents"
-        Resource = [
-          "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current[0].account_id}:log-group:aws/spans:*",
-          "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current[0].account_id}:log-group:/aws/application-signals/data:*",
-        ]
-        Condition = {
-          ArnLike = {
-            "aws:SourceArn" = "arn:aws:xray:${var.aws_region}:${data.aws_caller_identity.current[0].account_id}:*"
-          }
-          StringEquals = {
-            "aws:SourceAccount" = data.aws_caller_identity.current[0].account_id
-          }
-        }
-      }
-    ]
-  })
-
-  depends_on = [aws_cloudwatch_log_group.aws_spans]
-}
-
+# X-Ray Transaction Search is enabled ONCE per account/region by the Control
+# Plane infrastructure (platform/control_plane/infrastructure/main.tf), not
+# here. The Control Plane manages:
+#   - aws_cloudwatch_log_resource_policy.xray_to_cwlogs (account-wide policy)
+#   - aws_cloudformation_stack.xray_transaction_search wrapping
+#     AWS::XRay::TransactionSearchConfig (which causes AWS to auto-create
+#     the aws/spans log group and flip the trace segment destination to
+#     CloudWatchLogs)
+#
+# Per-runtime, we only need to grant the AgentCore service principal X-Ray
+# write permissions. AWS handles the log group provisioning service-side.
 resource "aws_xray_resource_policy" "agentcore_observability" {
   count = var.enable_xray_transaction_search ? 1 : 0
 
@@ -370,53 +332,35 @@ resource "aws_xray_resource_policy" "agentcore_observability" {
   })
 }
 
-# Switch X-Ray trace segment destination to CloudWatch Logs. The AWS provider
-# does not yet expose this as a managed resource, so we bootstrap it via the
-# CLI. AWS is NOT idempotent here — calling update-trace-segment-destination
-# when it's already CloudWatchLogs returns InvalidRequestException. Mirror
-# the "already exists / no-op" pattern used by null_resource.agentcore_traces_delivery
-# elsewhere in this file so re-applies don't fail account-wide.
-resource "null_resource" "xray_trace_segment_destination" {
-  count = var.enable_xray_transaction_search ? 1 : 0
-
-  triggers = {
-    region = var.aws_region
+# Drop legacy resources from state on existing deployments WITHOUT destroying
+# the underlying AWS resources. The aws_cloudwatch_log_group.aws_spans had
+# `prevent_destroy = true`, the null_resources were the v3.0 hotfix attempts
+# that all failed against AWS's reservation of `aws/`-prefixed names.
+# Requires Terraform 1.7+.
+removed {
+  from = aws_cloudwatch_log_group.aws_spans
+  lifecycle {
+    destroy = false
   }
+}
 
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      CURRENT=$(aws xray get-trace-segment-destination --region ${var.aws_region} --query 'Destination' --output text 2>/dev/null || echo "")
-      if [ "$CURRENT" = "CloudWatchLogs" ]; then
-        echo "X-Ray destination already CloudWatchLogs; skipping."
-        exit 0
-      fi
-      ATTEMPTS=0
-      MAX_ATTEMPTS=8
-      while : ; do
-        ATTEMPTS=$((ATTEMPTS + 1))
-        if OUT=$(aws xray update-trace-segment-destination --destination CloudWatchLogs --region ${var.aws_region} 2>&1); then
-          echo "X-Ray destination set to CloudWatchLogs."
-          exit 0
-        fi
-        if echo "$OUT" | grep -qi "AccessDeniedException"; then
-          if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
-            echo "update-trace-segment-destination still AccessDenied after $ATTEMPTS attempts: $OUT" >&2
-            exit 1
-          fi
-          SLEEP=$((ATTEMPTS * 5))
-          echo "Resource policy not yet effective (attempt $ATTEMPTS/$MAX_ATTEMPTS); sleeping $${SLEEP}s..."
-          sleep "$SLEEP"
-          continue
-        fi
-        echo "update-trace-segment-destination failed: $OUT" >&2
-        exit 1
-      done
-    EOT
+removed {
+  from = null_resource.aws_spans_log_group
+  lifecycle {
+    destroy = false
   }
+}
 
-  depends_on = [
-    aws_cloudwatch_log_group.aws_spans,
-    aws_cloudwatch_log_resource_policy.xray_transaction_search,
-  ]
+removed {
+  from = null_resource.xray_trace_segment_destination
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = aws_cloudwatch_log_resource_policy.xray_transaction_search
+  lifecycle {
+    destroy = false
+  }
 }
