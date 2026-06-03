@@ -26,8 +26,19 @@ _tracing_initialized = False
 
 
 def _fetch_langfuse_keys(secret_name: str, region: str) -> dict:
-    """Fetch Langfuse API keys from AWS Secrets Manager."""
-    client = boto3.client("secretsmanager", region_name=region)
+    """Fetch Langfuse API keys from AWS Secrets Manager.
+
+    Uses an aggressive timeout (3s connect / 5s read) so a slow Secrets
+    Manager response on a fresh AgentCore container can't blow the 120s
+    init budget. boto3 defaults are 60s/60s which is too forgiving here.
+    """
+    from botocore.config import Config
+    cfg = Config(
+        connect_timeout=3,
+        read_timeout=5,
+        retries={"max_attempts": 2, "mode": "standard"},
+    )
+    client = boto3.client("secretsmanager", region_name=region, config=cfg)
     response = client.get_secret_value(SecretId=secret_name)
     return json.loads(response["SecretString"])
 
@@ -111,16 +122,36 @@ def setup_tracing() -> bool:
         # Initialize Langfuse v4 client (auto-registers as OTEL span processor
         # for LangGraph/LangChain agents via @observe or manual tracing).
         # Skip in ADOT-only mode — there's no Langfuse server to talk to.
+        #
+        # IMPORTANT: this MUST NOT block module import. AgentCore enforces a
+        # hard 120s container init timeout. If the Langfuse host's CloudFront
+        # auto-login flow takes too long (or the Langfuse SDK's auth_check
+        # follows redirects into a session-establishment chain), it can blow
+        # past the init budget and the container is killed before it ever
+        # registers — manifesting as a 502 RuntimeClientError.
+        #
+        # The client + auth_check are purely diagnostic; trace export is
+        # handled by OTEL env vars set above. We run the init in a daemon
+        # thread with a short timeout and continue regardless.
         if langfuse_mode:
-            try:
-                from langfuse import get_client
-                _langfuse_client = get_client()
-                if _langfuse_client.auth_check():
-                    logger.info("langfuse_client_initialized")
-                else:
-                    logger.warning("langfuse_auth_check_failed")
-            except Exception as le:
-                logger.debug("langfuse_client_init_skipped", detail=str(le))
+            import threading
+
+            def _init_langfuse_client():
+                try:
+                    from langfuse import get_client
+                    client = get_client()
+                    if client.auth_check():
+                        logger.info("langfuse_client_initialized")
+                    else:
+                        logger.warning("langfuse_auth_check_failed")
+                except Exception as le:
+                    logger.debug("langfuse_client_init_skipped", detail=str(le))
+
+            t = threading.Thread(target=_init_langfuse_client, daemon=True, name="langfuse-init")
+            t.start()
+            t.join(timeout=5.0)
+            if t.is_alive():
+                logger.warning("langfuse_client_init_timeout", detail="proceeding without auth_check; OTEL export still active")
 
         _tracing_initialized = True
         logger.info(

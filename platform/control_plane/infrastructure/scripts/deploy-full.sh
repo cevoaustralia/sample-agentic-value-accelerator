@@ -294,32 +294,85 @@ echo -e "${GREEN}  Frontend deployed.${NC}"
 echo
 
 # ============================================================================
-# Step 7: Cognito User
+# Step 7: Cognito Users (one per RBAC role)
 # ============================================================================
+#
+# Creates one Cognito user per RBAC role. Each user is added to the matching
+# Cognito group so the JWT carries a `cognito:groups` claim — without group
+# membership, the backend defaults the role to VIEWER and the user cannot
+# deploy anything ("Requires operator role or higher").
+#
+# Roles (groups created by the cognito Terraform module):
+#   - admin    → Role.ADMIN     — full access (manage users, deploy, configure)
+#   - operator → Role.OPERATOR  — create/manage deployments
+#   - viewer   → Role.VIEWER    — read-only
+#
+# Admin is recommended (you'll want at least one). Operator and viewer are
+# optional; press Enter at the prompts to skip.
 
-echo -e "${BLUE}[7/7] Cognito user${NC}"
+echo -e "${BLUE}[7/7] Cognito users (one per role)${NC}"
+echo "  Each role corresponds to a Cognito group. Press Enter (empty email) to skip a role."
+echo "  Operator and viewer users are optional."
+echo
 
-read -p "  Create a Cognito user? (yes/no): " create_user
-if [ "$create_user" = "yes" ]; then
-    read -p "  Email: " user_email
+# Track which users got created for the summary
+ADMIN_EMAIL=""
+OPERATOR_EMAIL=""
+VIEWER_EMAIL=""
+
+# create_cognito_user <role> <description> [email_var_name]
+# Prompts for an email, creates the user, adds them to the group.
+create_cognito_user() {
+    local role="$1"
+    local description="$2"
+    local email_var="$3"
+    local email=""
+
+    local role_upper
+    role_upper=$(echo "$role" | tr '[:lower:]' '[:upper:]')
+    read -p "  ${role_upper} email (${description}): " email
+    if [ -z "$email" ]; then
+        echo -e "${YELLOW}  Skipped — no $role user created.${NC}"
+        echo
+        return 0
+    fi
 
     if aws cognito-idp admin-create-user \
         --user-pool-id "$COGNITO_USER_POOL_ID" \
-        --username "$user_email" \
+        --username "$email" \
         --temporary-password "TempPass1234!" \
-        --user-attributes "Name=email,Value=$user_email" \
+        --user-attributes "Name=email,Value=$email" \
         --region "$AWS_REGION" &> /dev/null; then
-        echo -e "${GREEN}  User created: $user_email${NC}"
-        echo -e "${YELLOW}  Temporary password: TempPass1234!${NC}"
-        echo "  You will be prompted to set a new password on first login."
+        echo -e "${GREEN}    User created: $email${NC}"
+        echo -e "${YELLOW}    Temporary password: TempPass1234!${NC}"
+        echo    "    User must set a new password on first login."
     else
-        echo -e "${YELLOW}  Could not create user (may already exist).${NC}"
+        echo -e "${YELLOW}    User already exists (skipping create, will still ensure group membership).${NC}"
     fi
-else
-    echo "  Skipped."
-fi
 
-echo
+    # Group membership is idempotent — safe to re-run.
+    if aws cognito-idp admin-add-user-to-group \
+        --user-pool-id "$COGNITO_USER_POOL_ID" \
+        --username "$email" \
+        --group-name "$role" \
+        --region "$AWS_REGION" &> /dev/null; then
+        echo -e "${GREEN}    Added to '$role' group.${NC}"
+        # Persist the email back to the caller via the named variable.
+        printf -v "$email_var" '%s' "$email"
+    else
+        echo -e "${YELLOW}    Could not add to '$role' group. Run manually:${NC}"
+        echo "      aws cognito-idp admin-add-user-to-group \\"
+        echo "        --user-pool-id $COGNITO_USER_POOL_ID \\"
+        echo "        --username $email \\"
+        echo "        --group-name $role \\"
+        echo "        --region $AWS_REGION"
+    fi
+    echo
+}
+
+create_cognito_user "admin"    "full access — deploy, manage, configure" ADMIN_EMAIL
+create_cognito_user "operator" "create + manage deployments (optional)" OPERATOR_EMAIL
+create_cognito_user "viewer"   "read-only (optional)"                   VIEWER_EMAIL
 
 # ============================================================================
 # Summary
@@ -333,4 +386,24 @@ echo -e "  Frontend:  ${FRONTEND_URL}"
 echo -e "  API:       ${API_ENDPOINT}"
 echo -e "  Cognito:   ${COGNITO_USER_POOL_ID}"
 echo -e "  ECR:       ${ECR_REPO}"
+echo
+echo -e "  Users:"
+if [ -n "$ADMIN_EMAIL" ]; then
+    echo -e "    ${GREEN}admin${NC}    → $ADMIN_EMAIL"
+else
+    echo -e "    ${YELLOW}admin    → not configured${NC}"
+fi
+if [ -n "$OPERATOR_EMAIL" ]; then
+    echo -e "    ${GREEN}operator${NC} → $OPERATOR_EMAIL"
+else
+    echo -e "    ${YELLOW}operator → not configured${NC}"
+fi
+if [ -n "$VIEWER_EMAIL" ]; then
+    echo -e "    ${GREEN}viewer${NC}   → $VIEWER_EMAIL"
+else
+    echo -e "    ${YELLOW}viewer   → not configured${NC}"
+fi
+echo
+echo -e "  Temporary password for any newly-created users: ${YELLOW}TempPass1234!${NC}"
+echo "  Each user must set a new password on first login."
 echo

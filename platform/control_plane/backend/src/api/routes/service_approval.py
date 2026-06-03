@@ -49,8 +49,8 @@ def get_service() -> ServiceApprovalService:
         _svc = ServiceApprovalService(
             table_name=getattr(settings, "SERVICE_APPROVAL_TABLE_NAME", ""),
             bucket_name=getattr(settings, "SERVICE_APPROVAL_BUCKET", ""),
-            state_machine_arn=getattr(settings, "SERVICE_APPROVAL_STATE_MACHINE_ARN", ""),
             region=settings.AWS_REGION,
+            agent_runtime_arn=getattr(settings, "SERVICE_APPROVAL_AGENT_RUNTIME_ARN", ""),
             local_artifacts_root=getattr(settings, "SERVICE_APPROVAL_LOCAL_ROOT", None),
         )
     return _svc

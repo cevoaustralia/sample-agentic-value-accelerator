@@ -278,3 +278,13 @@ variable "demo_viewer_password" {
   default     = "DemoViewer123!@#"
   sensitive   = true
 }
+
+# Service-approval AgentCore Runtime ARN. Source:
+# applications/service_approval_v2/runtime/ terraform output. Capture
+# from there and pass via -var or tfvars; the backend's create_run
+# invokes this directly.
+variable "service_approval_agent_runtime_arn" {
+  description = "AgentCore Runtime ARN for service-approval Path B"
+  type        = string
+  default     = ""
+}

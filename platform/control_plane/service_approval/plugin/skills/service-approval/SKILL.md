@@ -577,9 +577,9 @@ If all 4 assessment artifacts (`sar-facts.json`, `checkpoint-results.json`,
 Otherwise: dispatch Assessor as foreground subagent.
 Wait for all 4 assessment artifacts.
 
-### Phase 1: Research (3+1 sub-skills in parallel)
+### Phase 1: Research (3 required sub-skills in parallel, +1 conditional)
 
-Dispatch all 4 research sub-skills simultaneously as background subagents:
+Dispatch the 3 required research sub-skills simultaneously as background subagents:
 
 ```
 Agent 1: research-mitigations (background)
@@ -593,22 +593,36 @@ Agent 2: research-capabilities (background)
 Agent 3: research-api-surface (background)
   Prompt: Full text of skills/research-api-surface/SKILL.md + --service flag
   Output: research-api-surface.json
-
-Agent 4: research-attack-surface (background, recommended if threat model in input)
-  Prompt: Full text of skills/research-attack-surface/SKILL.md + --service flag
-  Output: research-attack-surface.json
-  Note: Always dispatch if input folder contains threat model files (MITRE, STRIDE, custom).
-  Runs fast and enriches controls with threat traceability.
-  If it fails, pipeline continues without it (backward compatible).
 ```
 
-**IMPORTANT:** Dispatch all 4 in a single message with 4 Agent tool calls.
-Do NOT set `model` parameter — let subagents inherit the caller's model.
+**Conditionally dispatch a 4th agent — research-attack-surface — ONLY when a
+threat model is present.** Apply the same auto-trigger rule as Sequential Mode
+(lines 408-411): scan `./input/` for files matching any of these patterns:
+`*MITRE*`, `*ATT&CK*`, `*attack*`, `*STRIDE*`, `*threat*model*`, `*threat*catalog*`.
+If at least one file matches OR the user supplied an explicit threat model
+input, add this 4th agent to the dispatch:
 
-When all 4 complete (or 3 complete + Agent 4 fails gracefully), run the merge step
-from `skills/research/SKILL.md`:
+```
+Agent 4 (conditional): research-attack-surface (background)
+  Prompt: Full text of skills/research-attack-surface/SKILL.md + --service flag
+  Output: research-attack-surface.json
+```
+
+**Skip Agent 4 entirely** when no threat model file is present and no customer
+threat model input was provided. Skipping it saves one full subagent
+cold-start (~30-60s + Bedrock latency) per run, which adds up across the fleet.
+The research-merge step already treats `research-attack-surface.json` as
+optional and won't fail when it's absent.
+
+**IMPORTANT:** Dispatch all required (and conditional, if triggered) sub-skills
+in a single message with parallel Agent tool calls. Do NOT set `model`
+parameter — let subagents inherit the caller's model.
+
+When the dispatched agents complete, run the merge step from
+`skills/research/SKILL.md`:
 - Combine the 3 required partial JSONs into `research.json`
 - If `research-attack-surface.json` exists, merge its data into `attack_surface`
+  (when Agent 4 was skipped, this is a no-op)
 - Run the validation script
 - If CRITICAL cross-reference errors exist (actions missing from both operations[] and
   permission_only_actions[]), re-dispatch the api-surface agent with the missing action list
@@ -700,11 +714,11 @@ Wait for `APPROVAL-REPORT.md`.
 ```
 Intake                    (1 agent, foreground — precursor)
 Phase 0: Assess          (1 agent, foreground)
-Phase 1: Research         (4 agents in parallel, then merge)
+Phase 1: Research         (3 required agents in parallel, +1 conditional, then merge)
   1a: Mitigations         (background) ─┐
   1b: Capabilities        (background) ─┤
   1c: API Surface         (background) ─┤
-  1d: ATT&CK Surface      (background) ─┤
+  1d: ATT&CK Surface      (conditional) ─┤  ← only when threat-model file in input
                                         └─ 1e: Merge (foreground)
 Phase 2: Validate         (1 agent, foreground)
 Phase 3: Map              (2 agents in parallel, then 2 sequential)

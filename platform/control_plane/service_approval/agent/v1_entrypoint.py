@@ -20,7 +20,9 @@ from __future__ import annotations
 
 import logging
 import os
+import pty
 import re
+import select
 import shutil
 import subprocess
 import sys
@@ -64,6 +66,19 @@ def _service_slug(service: str) -> str:
     return SLUG_RE.sub("", service.lower()) or "service"
 
 
+class RunDeletedExternally(Exception):
+    """Raised by RunnerContext._save_run when a conditional put_item fails
+    because the slug row no longer exists in DynamoDB. The watcher uses
+    this signal to stop its loop, which lets the AgentCore async task
+    complete and the microVM hit its idle timeout — preventing the
+    "watcher resurrects deleted rows forever" pathology Path B has
+    by default."""
+
+    def __init__(self, slug: str) -> None:
+        super().__init__(f"run row deleted externally: {slug}")
+        self.slug = slug
+
+
 # ----------------------------------------------------------------------------
 # Run state — DynamoDB + S3 helpers
 # ----------------------------------------------------------------------------
@@ -93,10 +108,30 @@ class RunnerContext:
         return resp.get("Item") or {}
 
     def _save_run(self, item: dict) -> None:
+        """Persist the run item, but ONLY if the row still exists.
+
+        Without the conditional, a watcher tick that runs after the user
+        clicks Delete in the UI silently re-creates the row — and because
+        the AgentCore async-task heartbeat is the watcher itself, the
+        microVM session never goes idle, so it lives until maxLifetime
+        (8h) and the watcher resurrects the row on every tick.
+
+        With ``attribute_exists(sk)`` the put fails when the row is gone.
+        Caller handles ``RunDeletedExternally`` by stopping the watcher,
+        which lets the async task complete and the microVM hit its
+        idle timeout normally."""
         item["pk"] = PARTITION_KEY
         item["sk"] = self.slug
         item["updated_at"] = _now_iso()
-        self.ddb.put_item(Item=item)
+        try:
+            self.ddb.put_item(
+                Item=item,
+                ConditionExpression="attribute_exists(sk)",
+            )
+        except ClientError as e:
+            if e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
+                raise RunDeletedExternally(self.slug) from e
+            raise
 
     def mark_running(self) -> None:
         item = self._load_run()
@@ -275,6 +310,31 @@ class ArtifactWatcher(threading.Thread):
 
     PRIVATE_DIRS = {"_staging", "_logs"}
 
+    # Directory names that should NEVER be mirrored to S3. The plugin's
+    # generate-iac skill scaffolds CDK + CDKTF TypeScript projects and runs
+    # `npm install` against them to validate compilation. That installs
+    # ~15,000 files of node_modules per project — bloats S3 storage by
+    # ~500 MB/run and does nothing useful (regenerable on demand). Same
+    # logic applies to .git, __pycache__, .venv, .terraform — all
+    # regenerable scratch.
+    _SKIP_PATH_COMPONENTS = {
+        "node_modules",
+        ".git",
+        "__pycache__",
+        ".venv",
+        ".terraform",
+        "cdk.out",
+        ".pytest_cache",
+        ".mypy_cache",
+    }
+
+    @classmethod
+    def _should_skip(cls, rel: Path) -> bool:
+        """Return True if any segment of the relative path is in the skip
+        list. Used by both scan loops (canonical + staging) so the rule is
+        applied consistently."""
+        return any(part in cls._SKIP_PATH_COMPONENTS for part in rel.parts)
+
     def __init__(self, ctx: RunnerContext, sa_root: Path, stop: threading.Event) -> None:
         super().__init__(daemon=True)
         self.ctx = ctx
@@ -308,6 +368,8 @@ class ArtifactWatcher(threading.Thread):
                     rel = f.relative_to(self.sa_root)
                 except ValueError:
                     continue
+                if self._should_skip(rel):
+                    continue
                 self._upload_if_new(f, f"_logs/{rel.as_posix()}")
 
         if canonical is None:
@@ -319,6 +381,8 @@ class ArtifactWatcher(threading.Thread):
             try:
                 rel = f.relative_to(canonical)
             except ValueError:
+                continue
+            if self._should_skip(rel):
                 continue
             parts = rel.parts
             if not parts:
@@ -360,13 +424,26 @@ class ArtifactWatcher(threading.Thread):
                         tick, canon.name if canon else None, total, counts,
                     )
                 tick += 1
+            except RunDeletedExternally as e:
+                # User deleted the run from the UI. Stop the watcher loop
+                # so the async-task heartbeat ends and the microVM can
+                # idle-timeout. Without this signal, the watcher keeps
+                # writing — which keeps the session "busy" — and the
+                # microVM never goes idle until maxLifetime (8h cap).
+                logger.warning("Run %s deleted externally; stopping watcher", e.slug)
+                self.stop.set()
+                break
             except Exception:
                 logger.exception("Watcher tick failed")
             self.stop.wait(5.0)
         # Final flush so we never lose the last few writes from the plugin.
+        # Skip if we exited due to external delete — the row is gone, the
+        # conditional put would just fail again with no useful effect.
         try:
             counts = self._scan_once()
             self.ctx.update_phases_from_counts(counts)
+        except RunDeletedExternally:
+            pass
         except Exception:
             logger.exception("Final watcher flush failed")
 
@@ -480,15 +557,54 @@ def _run_claude(workdir: Path, ctx: RunnerContext) -> int:
         prompt,
     ]
     logger.info("Launching claude in %s with model=%s", workdir, ctx.model_id)
+
+    # Node block-buffers stdout in 4KB chunks when it detects a pipe — that's
+    # why claude --print --verbose appears silent for minutes between artifact
+    # writes. Allocate a pty for stdout/stderr so Node sees a tty and switches
+    # to line-buffered output. stdin stays on /dev/null so --print remains
+    # headless. setsid() runs claude in its own session so signals targeting
+    # this Python process don't accidentally hit the child.
+    primary, secondary = pty.openpty()
     proc = subprocess.Popen(
         cmd, cwd=str(workdir), env=env,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        text=True, bufsize=1,
+        stdin=subprocess.DEVNULL,
+        stdout=secondary, stderr=secondary,
+        close_fds=True, start_new_session=True,
     )
-    assert proc.stdout is not None
-    for line in proc.stdout:
-        sys.stdout.write(line)
-        sys.stdout.flush()
+    os.close(secondary)
+
+    try:
+        while True:
+            try:
+                ready, _, _ = select.select([primary], [], [], 1.0)
+            except (OSError, ValueError):
+                break
+            if primary in ready:
+                try:
+                    chunk = os.read(primary, 65536)
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                sys.stdout.write(chunk.decode("utf-8", errors="replace"))
+                sys.stdout.flush()
+            if proc.poll() is not None:
+                # Drain any remaining buffered output before exiting.
+                while True:
+                    try:
+                        chunk = os.read(primary, 65536)
+                    except OSError:
+                        chunk = b""
+                    if not chunk:
+                        break
+                    sys.stdout.write(chunk.decode("utf-8", errors="replace"))
+                    sys.stdout.flush()
+                break
+    finally:
+        try:
+            os.close(primary)
+        except OSError:
+            pass
     return proc.wait()
 
 
@@ -504,7 +620,13 @@ def main() -> int:
     workdir = _prepare_workdir()
     sa_root = workdir / ".service-approval"
 
-    ctx.mark_running()
+    try:
+        ctx.mark_running()
+    except RunDeletedExternally:
+        # User deleted the row before the watcher's first write. No work
+        # to do — exit early, the microVM goes idle and AgentCore reaps it.
+        logger.warning("Run %s deleted before mark_running; exiting clean", ctx.slug)
+        return 0
 
     stop = threading.Event()
     watcher = ArtifactWatcher(ctx, sa_root, stop)
@@ -517,26 +639,35 @@ def main() -> int:
         rc = _run_claude(workdir, ctx)
     except Exception as e:
         logger.exception("Claude invocation crashed")
-        ctx.mark_done("failed", error=f"runner crash: {e}")
+        try:
+            ctx.mark_done("failed", error=f"runner crash: {e}")
+        except RunDeletedExternally:
+            pass  # row was deleted from UI; nothing more to record
         return 1
     finally:
         stop.set()
         watcher.join(timeout=15)
         tailer.join(timeout=5)
 
+    # Every mark_done below may race with a UI-side delete. Wrap each so
+    # the process can return cleanly instead of crashing on the missing
+    # row — the UI already knows the run is gone, no extra signal needed.
+    def _safe_mark_done(status: str, **kwargs) -> None:
+        try:
+            ctx.mark_done(status, **kwargs)
+        except RunDeletedExternally:
+            logger.info("Skipping final mark_done(%s); row deleted externally", status)
+
     if rc != 0:
-        ctx.mark_done("failed", error=f"claude exited with code {rc}")
+        _safe_mark_done("failed", error=f"claude exited with code {rc}")
         return rc
 
-    # Re-resolve the canonical slug dir post-run for the approval-report check.
     canonical = watcher._canonical_root()
     approval = "07-summarize/APPROVAL-REPORT.md"
     if canonical and (canonical / approval).exists():
-        ctx.mark_done("completed", approval_report_path=approval)
+        _safe_mark_done("completed", approval_report_path=approval)
     else:
-        # Pipeline finished without a final report — surface it as failed so
-        # the UI doesn't claim success on partial output.
-        ctx.mark_done("failed", error="approval report missing — see _logs/pipeline.log")
+        _safe_mark_done("failed", error="approval report missing — see _logs/pipeline.log")
         return 1
     logger.info("Pipeline completed for %s", ctx.slug)
     return 0

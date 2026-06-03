@@ -156,7 +156,11 @@ module "ecs" {
   service_approval_table_arn         = module.service_approval.table_arn
   service_approval_bucket            = module.service_approval.bucket_name
   service_approval_bucket_arn        = module.service_approval.bucket_arn
-  service_approval_state_machine_arn = module.service_approval.state_machine_arn
+  # Service-approval Path B: backend invokes AgentCore directly. The
+  # runtime ARN is owned by platform/control_plane/service_approval/runtime/
+  # (not a peer of this stack) — capture its terraform output and pass
+  # via tfvars to wire the backend's create_run path.
+  service_approval_agent_runtime_arn = var.service_approval_agent_runtime_arn
   cors_origins           = concat(["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"], ["https://${module.cloudfront.distribution_domain_name}"], var.domain_name != "" ? ["https://${var.domain_name}"] : [])
 
   # Cognito wiring — without these the backend's RBAC layer falls into a
@@ -175,14 +179,13 @@ module "ecs" {
 module "service_approval" {
   source = "./modules/service_approval"
 
-  name_prefix        = local.name_prefix
-  environment        = var.environment
-  vpc_id             = local.vpc_id
-  private_subnet_ids = local.private_subnet_ids
-  # Module creates its own ECS cluster (avoids a circular dep with module.ecs,
-  # which receives this module's table/bucket/SFN as inputs).
-
-  tags = var.tags
+  # Phase B decommission: this module owns DDB + S3 only. The Fargate
+  # runner + SFN orchestration moved to platform/control_plane/service_approval/
+  # runtime/. VPC/subnet inputs no longer needed since DDB+S3 don't run
+  # in a VPC.
+  name_prefix = local.name_prefix
+  environment = var.environment
+  tags        = var.tags
 }
 
 # ============================================================================
@@ -575,19 +578,23 @@ resource "aws_secretsmanager_secret_version" "dockerhub_credentials" {
 # Both are account+region-scoped, idempotent on subsequent applies.
 data "aws_caller_identity" "xray_prereq" {}
 
-# Pre-create aws/spans so X-Ray's policy validation has a concrete target on
-# the first apply in a fresh account/region. Without this, the
-# UpdateTraceSegmentDestination call can return AccessDeniedException
-# ("XRay does not have permission to call PutLogEvents on the aws/spans
-# Log Group") because the group hasn't been auto-created yet.
-resource "aws_cloudwatch_log_group" "aws_spans" {
-  name              = "aws/spans"
-  retention_in_days = 30
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
+# X-Ray Transaction Search prereq.
+#
+# Two CFN-native resources do all the work:
+#   1. aws_cloudwatch_log_resource_policy — grants xray.amazonaws.com permission
+#      to PutLogEvents on the (eventually-AWS-created) aws/spans log group.
+#   2. AWS::XRay::TransactionSearchConfig (wrapped via aws_cloudformation_stack
+#      because Terraform AWS provider <6 doesn't expose it as a native resource
+#      yet) — flips the trace segment destination to CloudWatchLogs AND triggers
+#      AWS-side auto-creation of the aws/spans log group.
+#
+# We do NOT pre-create aws/spans ourselves. AWS reserves all `aws/`-prefixed
+# log group names — neither the SDK (terraform aws_cloudwatch_log_group) nor
+# the CLI (aws logs create-log-group) can create them; only AWS internal
+# services can. The X-Ray service does this for us when TransactionSearchConfig
+# enables CloudWatchLogs as the destination.
+#
+# Reference: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Transaction-Search-Cloudformation.html
 
 resource "aws_cloudwatch_log_resource_policy" "xray_to_cwlogs" {
   policy_name = "AWSServiceRoleForXRayLogs"
@@ -612,49 +619,52 @@ resource "aws_cloudwatch_log_resource_policy" "xray_to_cwlogs" {
       }
     }]
   })
-
-  depends_on = [aws_cloudwatch_log_group.aws_spans]
 }
 
-# update-trace-segment-destination is not exposed by the AWS provider yet,
-# so we bootstrap it via local-exec. Idempotent: skips when destination is
-# already CloudWatchLogs. Retries on AccessDeniedException to absorb
-# resource-policy propagation lag (5-30s typical) on a cold account.
-resource "null_resource" "xray_trace_segment_destination" {
-  triggers = { region = var.aws_region }
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
-      CURRENT=$(aws xray get-trace-segment-destination --region ${var.aws_region} --query 'Destination' --output text 2>/dev/null || echo "")
-      if [ "$CURRENT" = "CloudWatchLogs" ]; then
-        echo "X-Ray destination already CloudWatchLogs; skipping."
-        exit 0
-      fi
-      ATTEMPTS=0
-      MAX_ATTEMPTS=8
-      while : ; do
-        ATTEMPTS=$((ATTEMPTS + 1))
-        if OUT=$(aws xray update-trace-segment-destination --destination CloudWatchLogs --region ${var.aws_region} 2>&1); then
-          echo "X-Ray destination set to CloudWatchLogs."
-          exit 0
-        fi
-        if echo "$OUT" | grep -qi "AccessDeniedException"; then
-          if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
-            echo "update-trace-segment-destination still AccessDenied after $ATTEMPTS attempts: $OUT" >&2
-            exit 1
-          fi
-          SLEEP=$((ATTEMPTS * 5))
-          echo "Resource policy not yet effective (attempt $ATTEMPTS/$MAX_ATTEMPTS); sleeping $${SLEEP}s..."
-          sleep "$SLEEP"
-          continue
-        fi
-        echo "update-trace-segment-destination failed: $OUT" >&2
-        exit 1
-      done
-    EOT
+resource "aws_cloudformation_stack" "xray_transaction_search" {
+  name = "${local.name_prefix}-xray-transaction-search"
+
+  # Single resource: AWS::XRay::TransactionSearchConfig.
+  # AWS handles aws/spans log group creation on its end.
+  template_body = jsonencode({
+    Resources = {
+      XRayTransactionSearchConfig = {
+        Type = "AWS::XRay::TransactionSearchConfig"
+      }
+    }
+  })
+
+  # Resource policy must exist before X-Ray flips the destination, otherwise
+  # the AWS-side bootstrap of aws/spans cannot succeed.
+  depends_on = [aws_cloudwatch_log_resource_policy.xray_to_cwlogs]
+}
+
+# Drop the legacy aws_cloudwatch_log_group.aws_spans from state on existing
+# accounts WITHOUT destroying the underlying log group. Without this, accounts
+# that previously deployed with the old resource (e.g. golden) would fail the
+# next apply because the old resource had `prevent_destroy = true`. Requires
+# Terraform 1.7+. Safe to leave in place permanently — `removed` blocks are
+# no-ops once the resource is gone from state.
+removed {
+  from = aws_cloudwatch_log_group.aws_spans
+  lifecycle {
+    destroy = false
   }
-  depends_on = [
-    aws_cloudwatch_log_group.aws_spans,
-    aws_cloudwatch_log_resource_policy.xray_to_cwlogs,
-  ]
+}
+
+# Same cleanup for the failed null_resource workarounds the previous fix
+# introduced. They never made it into a stable apply, but in case any state
+# carries them, drop without action.
+removed {
+  from = null_resource.aws_spans_log_group
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = null_resource.xray_trace_segment_destination
+  lifecycle {
+    destroy = false
+  }
 }

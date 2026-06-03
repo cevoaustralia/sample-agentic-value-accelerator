@@ -42,9 +42,9 @@ class Settings(BaseSettings):
         default="",
         description="S3 bucket holding service-approval per-phase artifacts"
     )
-    SERVICE_APPROVAL_STATE_MACHINE_ARN: str = Field(
+    SERVICE_APPROVAL_AGENT_RUNTIME_ARN: str = Field(
         default="",
-        description="Step Functions state machine ARN that runs the service-approval pipeline"
+        description="AgentCore Runtime ARN. Backend's create_run invokes this directly — Path B is the only execution path post-Phase B decommission."
     )
     SERVICE_APPROVAL_LOCAL_ROOT: str = Field(
         default="",
