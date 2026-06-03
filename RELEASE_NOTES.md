@@ -1,5 +1,48 @@
 # Release Notes
 
+## v3.0.1 — Deployment hardening
+
+Release date: June 2026
+
+Patch release covering bugs surfaced when deploying the v3.0 Control Plane to fresh AWS accounts (the previous test ground was the long-lived golden account, which masked a few cold-start issues).
+
+### Highlights
+
+- **Service Onboarding runner moved from Step Functions + Fargate to Bedrock AgentCore Runtime** — _Bikash Behera_
+  Migrates the 5-gate approval workflow runner from a Step-Functions-orchestrated ECS Fargate task to a Bedrock AgentCore Runtime container. Lower cold-start, simpler infra, fewer moving parts. Renames `service_approval_runner/` → `service_approval/` with new `agent/`, `infrastructure/`, and `runtime/` subtrees. Backend, ECS module, and outputs updated accordingly.
+
+- **X-Ray Transaction Search bootstrap fix** — _Vivian Bui_
+  Fresh-account `deploy-full.sh` failed with `InvalidParameterException: Log groups starting with AWS/ are reserved for AWS.` Replaces `aws_cloudwatch_log_group.aws_spans` with `AWS::XRay::TransactionSearchConfig` wrapped in `aws_cloudformation_stack` — AWS handles `aws/spans` creation server-side. Drops the per-runtime bootstrap from the FSI Foundry runtime module since Transaction Search is account-wide. `removed { ... lifecycle { destroy = false } }` blocks shed legacy resources from state on existing accounts.
+
+- **CodeBuild Terraform bump 1.5.7 → 1.9.8** — _Vivian Bui_
+  Required for `removed { }` blocks (added in TF 1.7) to parse in CI. Without this, foundry CI/CD applies failed at the Terraform parse stage.
+
+- **Cognito multi-role users in `deploy-full.sh`** — _Vivian Bui_
+  Step 7 now prompts for one user per role (admin / operator / viewer). Each user is created AND added to the matching Cognito group; without group membership the backend defaulted role to VIEWER and every deploy returned "Requires operator role or higher". Operator and viewer are optional. Deployment summary lists all three roles, marking unconfigured ones explicitly.
+
+- **Telemetry init timeouts** — _Vivian Bui_
+  AgentCore container init timed out at 120s on fresh accounts during cold-start. Two surgical fixes in `applications/fsi_foundry/foundations/src/utils/telemetry.py`:
+  - boto3 Secrets Manager call now uses 3s connect / 5s read with max_attempts=2 (was 60s/60s defaults)
+  - Langfuse v4 client + `auth_check()` now run in a daemon thread with a 5s join timeout; trace export via OTEL env vars stays active
+  
+  Worst-case synchronous portion of `setup_tracing` now caps at ~22s, leaving ~100s for module imports — well within the 120s budget.
+
+- **`deploy.sh` removed** — _Vivian Bui_
+  The script did only the infra-TF portion and printed "next steps" telling users to do Docker/frontend/Cognito manually. `deploy-full.sh` automates all of that. README + Infrastructure README + scripts README updated to drop the references.
+
+### Upgrade notes
+
+- **Existing accounts (already running v3.0):** the X-Ray fix uses Terraform 1.7+ `removed` blocks. If your TF state still has `aws_cloudwatch_log_group.aws_spans` from v3.0, the next apply will drop it from state without destroying the live log group. No manual cleanup needed.
+- **Fresh deployments:** `deploy-full.sh` now prompts for three Cognito users. Press Enter to skip operator/viewer; admin is recommended.
+- **Library upgrade:** Foundry runtime image must be rebuilt to pick up the telemetry timeout fixes. The Control Plane's CI/CD pipeline rebuilds the image on the next foundry use case deploy automatically.
+
+### Contributors to v3.0.1
+
+- **Bikash Behera** ([behebika@amazon.com](mailto:behebika@amazon.com)) — Service Onboarding runner migration to AgentCore Runtime
+- **Vivian Bui** ([vivibui@amazon.com](mailto:vivibui@amazon.com)) — X-Ray Transaction Search fix, Cognito multi-role users, CodeBuild TF bump, telemetry timeouts, deploy.sh removal
+
+---
+
 ## v3.0 — Plan, Operate, and Govern
 
 Release date: June 2026
