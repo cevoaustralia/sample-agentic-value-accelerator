@@ -189,8 +189,9 @@ function ResultsPanelInternal({
       <div
         className="card-glow animate-fade-in-scale"
         style={{
-          background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(59, 130, 246, 0.03) 100%)',
-          borderColor: 'rgba(59, 130, 246, 0.2)',
+          background: 'linear-gradient(135deg, #ffffff 0%, rgba(255, 143, 0, 0.04) 100%)',
+          borderColor: 'rgba(255, 143, 0, 0.25)',
+          borderWidth: '1.5px',
         }}
       >
         <div className="flex items-center justify-between mb-5">

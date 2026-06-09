@@ -30,6 +30,7 @@ function AgentStatusCard({ name, index, elapsed }: { name: string; index: number
     : ['Initializing', 'Sanctions screening', 'PEP verification', 'AML assessment'];
   const stageIndex = Math.min(Math.floor((elapsed - index * 2) / 8), stages.length - 1);
   const currentStage = elapsed > index * 2 ? stages[Math.max(0, stageIndex)] : 'Queued';
+  const colors = ['#FF8F00', '#7204B9'];
 
   return (
     <div
@@ -43,16 +44,16 @@ function AgentStatusCard({ name, index, elapsed }: { name: string; index: number
       <div className="relative">
         <div
           className="w-10 h-10 rounded-lg flex items-center justify-center"
-          style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}
+          style={{ background: `${colors[index % 2]}15`, border: `1px solid ${colors[index % 2]}30` }}
         >
-          <svg className="w-5 h-5 animate-spin" style={{ color: 'var(--accent)' }} fill="none" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 animate-spin" style={{ color: colors[index % 2] }} fill="none" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4 31.4" strokeLinecap="round" />
           </svg>
         </div>
         <div
           className="absolute inset-0 rounded-lg"
           style={{
-            border: '2px solid var(--accent)',
+            border: `2px solid ${colors[index % 2]}`,
             animation: 'pulse-ring 2s ease-out infinite',
             animationDelay: `${index * 0.4}s`,
           }}
@@ -60,7 +61,7 @@ function AgentStatusCard({ name, index, elapsed }: { name: string; index: number
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{name}</div>
-        <div className="text-xs font-mono" style={{ color: 'var(--accent)' }}>{currentStage}...</div>
+        <div className="text-xs font-mono" style={{ color: colors[index % 2] }}>{currentStage}...</div>
       </div>
       <div className="text-xs font-mono tabular-nums" style={{ color: 'var(--text-muted)' }}>
         {elapsed > index * 2 ? `${elapsed - index * 2}s` : '--'}
@@ -192,7 +193,7 @@ export default function AgentConsole({ config }: { config: RuntimeConfig }) {
                       type="button"
                       onClick={() => fillTestData(id)}
                       className="px-3 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer"
-                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--accent)' }}
+                      style={{ background: 'rgba(255, 143, 0, 0.06)', border: '1px solid rgba(255, 143, 0, 0.2)', color: 'var(--accent)' }}
                       disabled={status === 'running'}
                     >
                       {id}
@@ -211,15 +212,15 @@ export default function AgentConsole({ config }: { config: RuntimeConfig }) {
               <div
                 className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.02))',
-                  border: '1px solid rgba(59, 130, 246, 0.15)',
+                  background: 'linear-gradient(135deg, rgba(255, 143, 0, 0.1), rgba(240, 90, 42, 0.05))',
+                  border: '1px solid rgba(255, 143, 0, 0.2)',
                 }}
               >
-                <svg className="w-10 h-10" style={{ color: 'var(--accent)', opacity: 0.5 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                <svg className="w-10 h-10" style={{ color: 'var(--accent)', opacity: 0.6 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>Ready to Assess</h3>
+              <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Ready to Assess</h3>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Enter a Customer ID to begin KYC risk assessment</p>
             </div>
           )}
@@ -230,13 +231,13 @@ export default function AgentConsole({ config }: { config: RuntimeConfig }) {
                 <div className="relative inline-block mb-4">
                   <div
                     className="absolute inset-[-12px] rounded-full"
-                    style={{ border: '2px dashed rgba(59, 130, 246, 0.2)', animation: 'orbit 8s linear infinite' }}
+                    style={{ border: '2px dashed rgba(255, 143, 0, 0.2)', animation: 'orbit 8s linear infinite' }}
                   />
                   <div
                     className="w-20 h-20 rounded-2xl flex items-center justify-center animate-glow-pulse"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.05))',
-                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      background: 'linear-gradient(135deg, rgba(255, 143, 0, 0.1), rgba(240, 90, 42, 0.05))',
+                      border: '1px solid rgba(255, 143, 0, 0.3)',
                     }}
                   >
                     <span className="text-2xl font-mono font-bold" style={{ color: 'var(--accent)' }}>{elapsed}s</span>
@@ -278,19 +279,19 @@ export default function AgentConsole({ config }: { config: RuntimeConfig }) {
           {status === 'error' && (
             <div
               className="card animate-fade-in"
-              style={{ borderColor: 'rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.05)' }}
+              style={{ borderColor: 'rgba(220, 38, 38, 0.3)', background: 'rgba(220, 38, 38, 0.03)' }}
             >
               <div className="flex items-start gap-4">
                 <div
                   className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+                  style={{ background: 'rgba(220, 38, 38, 0.08)', border: '1px solid rgba(220, 38, 38, 0.2)' }}
                 >
-                  <svg className="w-5 h-5" style={{ color: '#ef4444' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-5 h-5" style={{ color: '#dc2626' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-base font-bold mb-1" style={{ color: '#ef4444' }}>Assessment Failed</h3>
+                  <h3 className="text-base font-bold mb-1" style={{ color: '#dc2626' }}>Assessment Failed</h3>
                   <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>{error}</p>
                   <button onClick={() => setStatus('idle')} className="btn-secondary text-xs">
                     Try Again

@@ -198,6 +198,48 @@ Each gets its own CloudFront, S3, API Gateway, Lambda, and AgentCore runtime.
 
 ---
 
+## Applying Cevo Branding (Light Mode)
+
+Each use case UI can be styled with the Cevo brand theme — a light-mode design using the Cevo orange/pink/purple colour palette. A steering file with the full colour specs, component rules, and step-by-step instructions is available at:
+
+```
+.kiro/steering/cevo-branding-light-mode.md
+```
+
+### How to Use It
+
+In Kiro chat, include the steering file as context and ask to apply the theme:
+
+```
+#cevo-branding-light-mode Apply the Cevo theme to the fraud_detection use case
+```
+
+The steering file provides:
+- Cevo colour palette (hex codes for Primary Orange, Accent Orange, Pink, Purple, Blue)
+- Light mode CSS variable definitions
+- Component styling rules (buttons, cards, navigation, hero sections, SVG diagrams)
+- Step-by-step checklist for applying to any use case UI
+
+### Reference Implementation
+
+The `kyc_banking` use case has the Cevo light-mode theme fully applied. Use it as a visual reference:
+
+```bash
+cd applications/fsi_foundry/ui/kyc_banking
+npm run dev
+# Open http://localhost:5173
+```
+
+### Quick Manual Steps (without Kiro)
+
+1. Copy the logo: `cp theme/CevoLogo_WhiteOrange.png applications/fsi_foundry/ui/<use_case>/public/cevo-logo.png`
+2. Update `src/index.css` — replace `:root` variables with the light mode palette from the steering file
+3. Replace all `rgba(59, 130, 246, ...)` (blue) inline styles with `rgba(255, 143, 0, ...)` (orange)
+4. Swap the navigation logo SVG for `<img src="/cevo-logo.png" alt="Cevo" className="h-8 w-auto" />`
+5. Run `npm run build` to verify
+
+---
+
 ## Troubleshooting
 
 **Deploy script can't find registry**
