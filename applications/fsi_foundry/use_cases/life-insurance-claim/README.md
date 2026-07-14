@@ -151,6 +151,68 @@ To enable live mode (requires AWS credentials with Bedrock + Textract access):
 3. Set profile: `export AWS_PROFILE=your-profile`
 4. Toggle "Use Claude (Live mode)" in the sidebar
 
+### Deploy to AWS (Serverless)
+
+The serverless deployment uses Step Functions + Lambda + CloudFront + S3.
+
+**Prerequisites:**
+- AWS CLI v2 with SSO configured
+- CDK CLI installed (`npm install -g aws-cdk`)
+- Python 3.12+
+
+**Deploy:**
+
+```bash
+cd use_cases/life-insurance-claim/infra
+
+# Create and activate venv
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Login to AWS
+aws sso login --profile your-profile
+
+# Bootstrap CDK (first time only)
+cdk bootstrap --profile your-profile
+
+# Deploy all stacks
+cdk deploy --profile your-profile --all
+```
+
+CDK resolves the account and region from the profile automatically.
+
+**Optional environment variables:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DEMO_AUTH_USER` | `cevo` | Basic auth username for the demo site |
+| `DEMO_AUTH_PASS` | `claims-demo-2026` | Basic auth password for the demo site |
+
+**After deployment, CDK outputs:**
+
+| Output | Description |
+|--------|-------------|
+| `SiteUrl` | CloudFront URL for the demo (requires basic auth login) |
+| `ProxyApiUrl` | API proxy URL (used by the frontend internally) |
+| `FunctionUrl` | Backend Lambda URL (IAM auth required — not publicly accessible) |
+| `DocsBucketName` | S3 bucket containing claim documents |
+| `StateMachineArn` | Step Function ARN (view executions in the AWS console) |
+
+After deploy, update `frontend/index.html` with the `ProxyApiUrl` value if deploying fresh, then redeploy:
+
+```bash
+# Update the API URL in the frontend (replace YOUR_PROXY_URL)
+sed -i '' "s|window.CLAIM_API_URL.*|window.CLAIM_API_URL = 'YOUR_PROXY_URL';|" ../frontend/index.html
+cdk deploy --profile your-profile --all
+```
+
+**Teardown:**
+
+```bash
+cdk destroy --profile your-profile --all
+```
+
 ### Deploy to AgentCore
 
 ```bash
