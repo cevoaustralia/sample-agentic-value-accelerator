@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cevo — Life Insurance Claim Validator</title>
+    <link rel="icon" href="https://cevo.com.au/wp-content/uploads/2021/09/CEVO-logo-smaller.png">
+    <style>
+        :root {
+            --cevo-blue: #0e41e5;
+            --cevo-dark: #32373c;
+            --cevo-orange: #ff8400;
+            --cevo-pink: #d3145a;
+            --cevo-purple: #9b51e0;
+            --gradient: linear-gradient(135deg, #ff9500 0%, #e040a0 50%, #3a50d9 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--cevo-dark);
+            background: #f8f9fa;
+            min-height: 100vh;
+        }
+
+        /* Hero */
+        .hero {
+            background: var(--gradient);
+            padding: 28px 40px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .hero img { height: 40px; filter: brightness(0) invert(1); }
+        .hero-text { color: white; }
+        .hero-title { font-size: 22px; font-weight: 700; }
+        .hero-sub { font-size: 13px; opacity: 0.9; margin-top: 2px; }
+        .hero-badge {
+            margin-left: auto;
+            background: rgba(255,255,255,0.2);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: white;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Main container */
+        .container { max-width: 1100px; margin: 32px auto; padding: 0 24px; }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .card h2 {
+            font-size: 16px;
+            color: var(--cevo-dark);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--cevo-orange);
+            display: inline-block;
+        }
+
+        /* Upload area */
+        .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .upload-box {
+            border: 2px dashed #d0d0d0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .upload-box:hover { border-color: var(--cevo-orange); background: #fff8f0; }
+        .upload-box.has-file { border-color: var(--cevo-blue); background: #f0f4ff; border-style: solid; }
+        .upload-box .icon { font-size: 28px; margin-bottom: 8px; }
+        .upload-box .label { font-size: 13px; color: #666; }
+        .upload-box .filename { font-size: 12px; color: var(--cevo-blue); font-weight: 600; margin-top: 4px; }
+        .upload-box input { display: none; }
+
+        /* Submit button */
+        .submit-btn {
+            background: var(--gradient);
+            border: none;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 14px 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 16px;
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
+        .submit-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(58,80,217,0.3); }
+        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* Progress */
+        .progress-area { display: none; }
+        .progress-area.active { display: block; }
+        .step {
+            border-left: 4px solid #e0e0e0;
+            padding: 10px 16px;
+            margin: 8px 0;
+            border-radius: 0 6px 6px 0;
+            background: #fafafa;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .step.active { border-color: var(--cevo-orange); background: #fff8f0; }
+        .step.done { border-color: #28a745; background: #f0fff4; }
+        .step.intake { border-color: var(--cevo-orange); }
+        .step.identity { border-color: var(--cevo-pink); }
+        .step.validity { border-color: var(--cevo-purple); }
+        .step.synthesis { border-color: var(--cevo-blue); }
+
+        /* Results */
+        .results-area { display: none; }
+        .results-area.active { display: block; }
+        .decision-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+        }
+        .decision-badge.go { background: var(--cevo-blue); }
+        .decision-badge.no_go { background: var(--cevo-pink); }
+        .decision-badge.refer { background: var(--cevo-orange); }
+
+        .confidence-bar {
+            background: #e9ecef;
+            border-radius: 6px;
+            height: 28px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .confidence-fill {
+            height: 100%;
+            border-radius: 6px;
+            background: var(--gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            transition: width 0.5s;
+        }
+
+        .metrics { display: flex; gap: 12px; margin: 16px 0; }
+        .metric {
+            flex: 1;
+            border-radius: 8px;
+            padding: 14px;
+            text-align: center;
+            border: 1px solid #e9ecef;
+        }
+        .metric.pass { background: linear-gradient(135deg, #f0f4ff, #e8eaf6); }
+        .metric.fail { background: linear-gradient(135deg, #fff0f5, #fce4ec); }
+        .metric .value { font-size: 24px; font-weight: 700; }
+        .metric.pass .value { color: var(--cevo-blue); }
+        .metric.fail .value { color: var(--cevo-pink); }
+        .metric .label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .risk-flag {
+            background: #fff3e0;
+            border-left: 4px solid var(--cevo-orange);
+            padding: 10px 14px;
+            margin: 6px 0;
+            border-radius: 0 6px 6px 0;
+            font-size: 13px;
+        }
+
+        .explanation { background: #f8f9fa; padding: 16px; border-radius: 8px; line-height: 1.6; margin-top: 12px; }
+
+        .gradient-divider { height: 3px; background: var(--gradient); border-radius: 2px; margin: 24px 0; }
+
+        /* Agent detail toggle */
+        .agent-detail { margin-top: 8px; }
+        .agent-detail summary { cursor: pointer; font-weight: 600; font-size: 14px; padding: 8px; }
+        .agent-detail pre { background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; margin-top: 8px; }
+
+        /* Sample claim selector */
+        .sample-selector { margin-bottom: 16px; }
+        .sample-selector select {
+            padding: 10px 14px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .upload-grid { grid-template-columns: 1fr; }
+            .hero { flex-wrap: wrap; padding: 20px; }
+            .hero-badge { margin-left: 0; margin-top: 8px; }
+        }
+
+        /* Tabs */
+        .tab-btn {
+            padding: 8px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            background: white;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--cevo-dark);
+        }
+        .tab-btn:hover { border-color: var(--cevo-orange); }
+        .tab-btn.active {
+            background: var(--gradient);
+            color: white;
+            border-color: transparent;
+        }
+
+        /* Claim details cards */
+        .claim-details { margin: 16px 0; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+        .detail-card {
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e9ecef;
+        }
+        .detail-card .dc-header {
+            padding: 8px 12px;
+            font-weight: 600;
+            font-size: 12px;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .detail-card .dc-body { padding: 12px; font-size: 13px; line-height: 1.6; }
+        .detail-card.orange .dc-header { background: var(--cevo-orange); }
+        .detail-card.pink .dc-header { background: var(--cevo-pink); }
+        .detail-card.purple .dc-header { background: var(--cevo-purple); }
+        .detail-card.blue .dc-header { background: var(--cevo-blue); }
+    </style>
+</head>
+<body>
+
+<div class="hero">
+    <img src="https://cevo.com.au/wp-content/uploads/2021/09/CEVO-logo.png" alt="Cevo">
+    <div class="hero-text">
+        <div class="hero-title">Life Insurance Claim Validator</div>
+        <div class="hero-sub">AI-powered document validation & identity verification</div>
+    </div>
+    <span class="hero-badge">Amazon Bedrock + Step Functions</span>
+</div>
+
+<div class="container">
+    <!-- Mode tabs -->
+    <div class="card">
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+            <button class="tab-btn active" onclick="switchTab('sample')" id="tabSample">Sample Claims</button>
+            <button class="tab-btn" onclick="switchTab('upload')" id="tabUpload">Upload Documents</button>
+        </div>
+
+        <!-- Sample claim mode -->
+        <div id="sampleMode">
+            <h2>Validate a Sample Claim</h2>
+            <div class="sample-selector">
+                <label style="font-size:13px;color:#666;display:block;margin-bottom:6px;">Select a sample claim to test:</label>
+                <select id="claimSelect" onchange="showClaimDetails()">
+                    <option value="CLAIM-LI-001">CLAIM-LI-001 — Sarah Mitchell (expected: GO)</option>
+                    <option value="CLAIM-LI-DEMO">CLAIM-LI-DEMO — Real docs test (expected: NO_GO)</option>
+                </select>
+            </div>
+            <div id="claimDetails" class="claim-details"></div>
+            <button class="submit-btn" onclick="runValidation()">🔍 Run Claim Validation (Textract + Claude)</button>
+        </div>
+
+        <!-- Upload mode -->
+        <div id="uploadMode" style="display:none;">
+            <h2>Upload Claim Documents</h2>
+            <p style="font-size:13px;color:#666;margin-bottom:16px;">Upload identity documents, death certificates, and policy documents. The AI agents will extract data, verify identity, and validate the claim.</p>
+            <div class="upload-grid">
+                <div class="upload-box" onclick="document.getElementById('fileId').click()">
+                    <div class="icon">🪪</div>
+                    <div class="label">Identity Document</div>
+                    <div class="filename" id="fileIdName">Passport, driver's licence, or government ID</div>
+                    <input type="file" id="fileId" accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this, 'fileIdName')">
+                </div>
+                <div class="upload-box" onclick="document.getElementById('fileDeath').click()">
+                    <div class="icon">📜</div>
+                    <div class="label">Death Certificate</div>
+                    <div class="filename" id="fileDeathName">Official death certificate</div>
+                    <input type="file" id="fileDeath" accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this, 'fileDeathName')">
+                </div>
+                <div class="upload-box" onclick="document.getElementById('filePolicy').click()">
+                    <div class="icon">📋</div>
+                    <div class="label">Policy Document</div>
+                    <div class="filename" id="filePolicyName">Policy schedule or contract</div>
+                    <input type="file" id="filePolicy" accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this, 'filePolicyName')">
+                </div>
+                <div class="upload-box" onclick="document.getElementById('fileClaim').click()">
+                    <div class="icon">📝</div>
+                    <div class="label">Claim Form</div>
+                    <div class="filename" id="fileClaimName">Completed claim application</div>
+                    <input type="file" id="fileClaim" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="fileSelected(this, 'fileClaimName')">
+                </div>
+            </div>
+            <button class="submit-btn" onclick="runUploadValidation()" id="uploadBtn" disabled>🔍 Validate Uploaded Documents (Textract + Claude)</button>
+            <p style="font-size:11px;color:#999;margin-top:8px;text-align:center;">Documents are uploaded to S3 and processed by Amazon Textract + Claude via the Step Function pipeline.</p>
+        </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="card progress-area" id="progressArea">
+        <h2>Agent Pipeline</h2>
+        <div class="step" id="step-intake">📥 <b>Document Intake Agent</b> — Calling Amazon Textract...</div>
+        <div class="step" id="step-identity">🪪 <b>Identity Verification Agent</b> — Claude cross-referencing...</div>
+        <div class="step" id="step-validity">📋 <b>Claim Validity Agent</b> — Claude checking policy...</div>
+        <div class="step" id="step-synthesis">⚖️ <b>Decision Synthesis</b> — Producing GO / NO_GO / REFER...</div>
+    </div>
+
+    <!-- Results -->
+    <div class="card results-area" id="resultsArea">
+        <h2>Decision</h2>
+        <div id="decisionBadge"></div>
+
+        <div style="margin-top:16px;">
+            <div style="font-size:13px;color:#666;margin-bottom:4px;">Confidence</div>
+            <div class="confidence-bar">
+                <div class="confidence-fill" id="confidenceBar" style="width:0%"></div>
+            </div>
+        </div>
+
+        <div class="metrics" id="metricsRow"></div>
+
+        <div id="riskFlags"></div>
+
+        <div class="gradient-divider"></div>
+        <h2>Explanation</h2>
+        <div class="explanation" id="explanation"></div>
+
+        <div class="gradient-divider"></div>
+        <h2>Agent Details</h2>
+        <div id="agentDetails"></div>
+    </div>
+</div>
+
+<script>
+// API URL — proxy Lambda Function URL (behind CloudFront basic auth)
+// Set this after deployment: check CDK output "ProxyApiUrl"
+const API_URL = window.CLAIM_API_URL || localStorage.getItem('api_url') || '';
+
+// Sample claim data for the details display
+const SAMPLE_CLAIMS = {
+    "CLAIM-LI-001": {
+        claimant: "Sarah Jane Mitchell (spouse)",
+        claimantDob: "14 Mar 1982",
+        deceased: "David Robert Mitchell",
+        dateOfDeath: "28 May 2026",
+        causeOfDeath: "Acute Myocardial Infarction",
+        policyNumber: "LI-2019-004782",
+        policyStatus: "Active",
+        sumInsured: "$1,500,000",
+        productType: "Term Life (20 years)",
+        documents: ["Passport (Sarah Mitchell)", "Death Certificate (David Mitchell)", "Policy Schedule", "Claim Form"],
+    },
+    "CLAIM-LI-DEMO": {
+        claimant: "Jack McCraw (unknown relationship)",
+        claimantDob: "28 Dec 1975",
+        deceased: "James Samuel Hall",
+        dateOfDeath: "17 Mar 1955",
+        causeOfDeath: "Unknown (historical document)",
+        policyNumber: "Not provided",
+        policyStatus: "Unknown",
+        sumInsured: "Unknown",
+        productType: "N/A",
+        documents: ["NSW Driver's Licence (Jack McCraw)", "Death Certificate 1955 (James Hall)", "Medical Claim Form (Jonathan Reyes)"],
+    },
+};
+
+// --- Tab switching ---
+function switchTab(tab) {
+    document.getElementById('sampleMode').style.display = tab === 'sample' ? 'block' : 'none';
+    document.getElementById('uploadMode').style.display = tab === 'upload' ? 'block' : 'none';
+    document.getElementById('tabSample').classList.toggle('active', tab === 'sample');
+    document.getElementById('tabUpload').classList.toggle('active', tab === 'upload');
+}
+
+// --- Claim details display ---
+function showClaimDetails() {
+    const claimId = document.getElementById('claimSelect').value;
+    const claim = SAMPLE_CLAIMS[claimId];
+    if (!claim) return;
+
+    document.getElementById('claimDetails').innerHTML = `
+        <div class="detail-grid">
+            <div class="detail-card orange">
+                <div class="dc-header">Claimant</div>
+                <div class="dc-body">
+                    <strong>${claim.claimant}</strong><br>
+                    DOB: ${claim.claimantDob}
+                </div>
+            </div>
+            <div class="detail-card pink">
+                <div class="dc-header">Deceased</div>
+                <div class="dc-body">
+                    <strong>${claim.deceased}</strong><br>
+                    Date of death: ${claim.dateOfDeath}<br>
+                    Cause: ${claim.causeOfDeath}
+                </div>
+            </div>
+            <div class="detail-card purple">
+                <div class="dc-header">Policy</div>
+                <div class="dc-body">
+                    <strong>${claim.policyNumber}</strong><br>
+                    Status: ${claim.policyStatus}<br>
+                    Sum insured: ${claim.sumInsured}<br>
+                    Product: ${claim.productType}
+                </div>
+            </div>
+            <div class="detail-card blue">
+                <div class="dc-header">Documents (${claim.documents.length})</div>
+                <div class="dc-body">
+                    ${claim.documents.map(d => `📄 ${d}`).join('<br>')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// --- File upload handling ---
+function fileSelected(input, labelId) {
+    const label = document.getElementById(labelId);
+    if (input.files.length > 0) {
+        label.textContent = input.files[0].name;
+        input.parentElement.classList.add('has-file');
+    }
+    checkUploadReady();
+}
+
+function checkUploadReady() {
+    const hasId = document.getElementById('fileId').files.length > 0;
+    const hasDeath = document.getElementById('fileDeath').files.length > 0;
+    document.getElementById('uploadBtn').disabled = !(hasId || hasDeath);
+}
+
+// --- Run validation on sample claims ---
+async function runValidation() {
+    const claimId = document.getElementById('claimSelect').value;
+    const prefix = `samples/life-insurance-claim/${claimId}`;
+
+    await executeValidation({ claim_id: claimId, s3_prefix: prefix });
+}
+
+// --- Run validation on uploaded documents ---
+async function runUploadValidation() {
+    // TODO: Upload files to S3 via presigned URL, then call the pipeline
+    // For now, show that it requires the backend presign endpoint
+    alert('Upload mode requires documents to be uploaded to S3 first via presigned URLs.\n\nFor the demo, use the Sample Claims tab to validate pre-uploaded documents with the live Textract + Claude pipeline.');
+}
+
+// --- Core validation execution ---
+async function executeValidation(payload) {
+    const progressArea = document.getElementById('progressArea');
+    const resultsArea = document.getElementById('resultsArea');
+    progressArea.classList.add('active');
+    resultsArea.classList.remove('active');
+
+    // Reset and animate steps
+    const steps = ['intake', 'identity', 'validity', 'synthesis'];
+    steps.forEach(s => {
+        const el = document.getElementById(`step-${s}`);
+        el.className = 'step';
+    });
+    document.getElementById('step-intake').classList.add('active', 'intake');
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errText}`);
+        }
+
+        const data = await response.json();
+
+        // Mark all steps done
+        steps.forEach(s => {
+            const el = document.getElementById(`step-${s}`);
+            el.classList.remove('active');
+            el.classList.add('done', s);
+        });
+
+        displayResults(data);
+    } catch (error) {
+        // Reset step indicators
+        steps.forEach(s => document.getElementById(`step-${s}`).className = 'step');
+        progressArea.classList.remove('active');
+        alert(`Validation failed:\n\n${error.message}\n\nCheck that the API is deployed and accessible.`);
+    }
+}
+
+function displayResults(data) {
+    const resultsArea = document.getElementById('resultsArea');
+    resultsArea.classList.add('active');
+
+    // Decision from synthesis step
+    const decision = data.decision || data;
+    const dec = decision.decision || 'refer';
+    const confidence = decision.confidence_score || 0;
+
+    // Badge
+    const badge = document.getElementById('decisionBadge');
+    const labels = { go: '✅ GO', no_go: '❌ NO GO', refer: '⚠️ REFER' };
+    badge.innerHTML = `<span class="decision-badge ${dec}">${labels[dec] || dec.toUpperCase()}</span>`;
+
+    // Confidence bar
+    const bar = document.getElementById('confidenceBar');
+    bar.style.width = `${confidence * 100}%`;
+    bar.textContent = `${Math.round(confidence * 100)}%`;
+
+    // Metrics
+    const metrics = document.getElementById('metricsRow');
+    const idOk = decision.identity_verified;
+    const polOk = decision.policy_valid;
+    const deathOk = decision.death_cert_valid;
+    metrics.innerHTML = `
+        <div class="metric ${idOk ? 'pass' : 'fail'}"><div class="value">${idOk ? '✓' : '✗'}</div><div class="label">Identity</div></div>
+        <div class="metric ${polOk ? 'pass' : 'fail'}"><div class="value">${polOk ? '✓' : '✗'}</div><div class="label">Policy</div></div>
+        <div class="metric ${deathOk ? 'pass' : 'fail'}"><div class="value">${deathOk ? '✓' : '✗'}</div><div class="label">Death Cert</div></div>
+    `;
+
+    // Risk flags
+    const flags = decision.risk_flags || [];
+    const flagsEl = document.getElementById('riskFlags');
+    flagsEl.innerHTML = flags.length ? '<h3 style="margin:16px 0 8px;font-size:14px;">🚩 Risk Flags</h3>' +
+        flags.map(f => `<div class="risk-flag">⚠️ ${f}</div>`).join('') : '';
+
+    // Explanation
+    document.getElementById('explanation').textContent = decision.explanation || 'No explanation available.';
+
+    // Agent details
+    const details = document.getElementById('agentDetails');
+    const sections = [
+        { title: '📥 Document Intake (Textract)', data: data.intake_result },
+        { title: '🪪 Identity Verification (Claude)', data: data.parallel_results?.[0] || data.identity_result },
+        { title: '📋 Claim Validity (Claude)', data: data.parallel_results?.[1] || data.validity_result },
+        { title: '⚖️ Decision Synthesis (Claude)', data: data.decision },
+    ];
+    details.innerHTML = sections.map(s => `
+        <details class="agent-detail">
+            <summary>${s.title}</summary>
+            <pre>${JSON.stringify(s.data, null, 2)}</pre>
+        </details>
+    `).join('');
+}
+
+// Show claim details on load
+showClaimDetails();
+</script>
+
+</body>
+</html>
