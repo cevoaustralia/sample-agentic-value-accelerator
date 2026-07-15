@@ -82,22 +82,32 @@ export interface Template {
   name: string;
   description: string;
   version: string;
-  pattern_type: string;
+  tier: string;
+  category: string;
+  iac_options: string[];
+  includes: { infra?: boolean; agent_code?: boolean; ui?: boolean; tests?: boolean };
+  tags: string[];
+  aws_services: string[];
+  frameworks_list: string[];
+  built_with: string[];
+  resources?: { name: string; description: string }[];
+  parameters?: { name: string; type: string; required: boolean; description: string; default?: string }[];
+  pattern_description?: string;
+  learn_more?: { title: string; url: string }[];
+  // Legacy fields (used by BootstrapForm and DeploymentCreate)
+  pattern_type?: string;
   frameworks?: Framework[];
   deployment_patterns?: DeploymentPattern[];
-  parameters?: Parameter[];
-  architecture_diagram?: string;
-  example_use_cases?: string[];
-  tags?: string[];
   type?: string;
   dependencies?: string[];
 }
 
 export interface TemplateStats {
   total_templates: number;
-  pattern_types: string[];
+  tiers: Record<string, number>;
+  categories: Record<string, number>;
   frameworks: string[];
-  deployment_patterns: string[];
+  iac_options: string[];
 }
 
 export interface BootstrapRequest {
@@ -331,4 +341,67 @@ export interface GuardrailEvent {
   filter_type?: string;
   input_snippet?: string;
   details?: Record<string, any>;
+}
+
+// Service Approval (Service Onboarding) ------------------------------------
+
+export type ServiceApprovalTestingMode = 'skip' | 'dry-run' | 'full-deploy';
+export type ServiceApprovalFramework = 'ccmv4' | 'nist' | 'cis' | 'iso';
+export type ServiceApprovalRunStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type ServiceApprovalPhaseStatus = 'pending' | 'running' | 'complete' | 'failed';
+
+export interface ServiceApprovalPhaseState {
+  key: string;             // assess | research | validate | map | generate | test | summarize | evidence
+  label: string;
+  status: ServiceApprovalPhaseStatus;
+  file_count: number;
+  started_at?: string | null;
+  completed_at?: string | null;
+  error?: string | null;
+}
+
+export interface ServiceApprovalRun {
+  slug: string;
+  service: string;
+  framework: ServiceApprovalFramework;
+  testing_mode: ServiceApprovalTestingMode;
+  status: ServiceApprovalRunStatus;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+  execution_arn?: string | null;
+  phases: ServiceApprovalPhaseState[];
+  approval_report_path?: string | null;  // s3 key relative to slug, e.g. 07-summarize/APPROVAL-REPORT.md
+  error?: string | null;
+}
+
+export interface ServiceApprovalRunCreate {
+  service: string;
+  framework: ServiceApprovalFramework;
+  testing_mode: ServiceApprovalTestingMode;
+}
+
+export interface ServiceApprovalFileEntry {
+  path: string;            // relative to slug, e.g. 05-generate/preventive/CTRL-ORG-PRV-001.json
+  size: number;
+  modified_at: string;
+}
+
+export interface ServiceApprovalFileTree {
+  slug: string;
+  phase: string;           // e.g. 05-generate
+  groups: { name: string; files: ServiceApprovalFileEntry[] }[];
+}
+
+export interface ServiceApprovalFileContent {
+  path: string;
+  size: number;
+  content: string;
+  encoding: 'utf-8' | 'base64';
+  language?: string;
+}
+
+export interface AwsService {
+  label: string;
+  slug: string;
 }

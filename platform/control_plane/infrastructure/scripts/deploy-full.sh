@@ -17,6 +17,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 INFRA_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 BACKEND_DIR="$REPO_ROOT/platform/control_plane/backend"
 FRONTEND_DIR="$REPO_ROOT/platform/control_plane/frontend"
+RUNNER_DIR="$REPO_ROOT/platform/control_plane/service_approval_runner"
 
 # ============================================================================
 # Preflight Checks
@@ -65,7 +66,7 @@ echo
 # Step 1: Terraform
 # ============================================================================
 
-echo -e "${BLUE}[1/6] Infrastructure${NC}"
+echo -e "${BLUE}[1/7] Infrastructure${NC}"
 
 cd "$INFRA_DIR"
 
@@ -116,6 +117,25 @@ if [ ! -f terraform.tfstate ]; then
 fi
 
 terraform init -input=false
+
+# Pre-import X-Ray Transaction Search prereqs that are account+region-scoped
+# and shared. They commonly pre-exist on accounts where AgentCore was tried
+# before, where a prior partial apply created them, or where AWS auto-created
+# the aws/spans log group on first X-Ray call. Without these imports a fresh
+# `terraform apply` on such an account fails with ResourceAlreadyExistsException.
+SPANS_LG=$(aws logs describe-log-groups --log-group-name-prefix "aws/spans" --region "$AWS_REGION" --query "logGroups[?logGroupName=='aws/spans'].logGroupName" --output text 2>/dev/null || echo "")
+if [ -n "$SPANS_LG" ] && ! terraform state show aws_cloudwatch_log_group.aws_spans &>/dev/null; then
+    echo "  Importing existing aws/spans log group..."
+    terraform import aws_cloudwatch_log_group.aws_spans "aws/spans" >/dev/null 2>&1 || \
+        echo -e "${YELLOW}  Could not import aws/spans (continuing).${NC}"
+fi
+SPANS_POLICY=$(aws logs describe-resource-policies --region "$AWS_REGION" --query "resourcePolicies[?policyName=='AWSServiceRoleForXRayLogs'].policyName" --output text 2>/dev/null || echo "")
+if [ -n "$SPANS_POLICY" ] && ! terraform state show aws_cloudwatch_log_resource_policy.xray_to_cwlogs &>/dev/null; then
+    echo "  Importing existing AWSServiceRoleForXRayLogs resource policy..."
+    terraform import aws_cloudwatch_log_resource_policy.xray_to_cwlogs "AWSServiceRoleForXRayLogs" >/dev/null 2>&1 || \
+        echo -e "${YELLOW}  Could not import xray_to_cwlogs (continuing).${NC}"
+fi
+
 terraform plan -out=tfplan
 
 echo
@@ -132,6 +152,7 @@ rm -f tfplan
 
 # Capture outputs
 ECR_REPO=$(terraform output -raw ecr_repository_url)
+RUNNER_ECR_REPO=$(terraform output -raw service_approval_runner_ecr_repository_url 2>/dev/null || echo "")
 FRONTEND_BUCKET=$(terraform output -raw frontend_bucket_name)
 CLOUDFRONT_ID=$(terraform output -raw cloudfront_distribution_id)
 API_ENDPOINT=$(terraform output -raw api_endpoint)
@@ -151,7 +172,7 @@ echo
 # Step 2: Backend Docker Image
 # ============================================================================
 
-echo -e "${BLUE}[2/6] Backend Docker image${NC}"
+echo -e "${BLUE}[2/7] Backend Docker image${NC}"
 
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -172,10 +193,52 @@ echo -e "${GREEN}  Backend image pushed.${NC}"
 echo
 
 # ============================================================================
-# Step 3: ECS Deployment
+# Step 3: Service-Approval Runner Image
+# ============================================================================
+# The Service Onboarding pipeline launches a Fargate task that pulls this image
+# from ECR. Without it the Step Functions execution fails immediately with
+# CannotPullContainerError. We build & push every deploy so the image stays in
+# sync with the runner source under platform/control_plane/service_approval_runner.
+
+echo -e "${BLUE}[3/7] Service-Approval runner image${NC}"
+
+if [ -z "$RUNNER_ECR_REPO" ]; then
+    echo -e "${YELLOW}  service_approval_runner_ecr_repository_url not in tf outputs — skipping.${NC}"
+    echo -e "${YELLOW}  (Service Onboarding pipeline will fail until the image is pushed.)${NC}"
+elif [ ! -f "$RUNNER_DIR/Dockerfile" ]; then
+    echo -e "${YELLOW}  Runner source not found at $RUNNER_DIR — skipping.${NC}"
+else
+    # Sync the upstream service-onboarding plugin if a local checkout exists.
+    # Skip silently otherwise — the existing ./plugin tree (committed in repo)
+    # is used as-is.
+    if [ -x "$RUNNER_DIR/sync-plugin.sh" ]; then
+        SRC="${SERVICE_ONBOARDING_SRC:-$HOME/dev/LL/service-onboarding}"
+        if [ -d "$SRC" ]; then
+            echo "  Syncing plugin tree from $SRC..."
+            (cd "$RUNNER_DIR" && SERVICE_ONBOARDING_SRC="$SRC" ./sync-plugin.sh > /dev/null)
+        else
+            echo "  Plugin source not at $SRC — using committed ./plugin/."
+        fi
+    fi
+
+    echo "  Building linux/amd64 runner image (~600MB, may take several minutes)..."
+    docker build \
+        --platform linux/amd64 \
+        -t "${RUNNER_ECR_REPO}:latest" \
+        "$RUNNER_DIR"
+
+    echo "  Pushing runner image to ECR..."
+    docker push "${RUNNER_ECR_REPO}:latest"
+
+    echo -e "${GREEN}  Runner image pushed.${NC}"
+fi
+echo
+
+# ============================================================================
+# Step 4: ECS Deployment
 # ============================================================================
 
-echo -e "${BLUE}[3/6] ECS rolling deployment${NC}"
+echo -e "${BLUE}[4/7] ECS rolling deployment${NC}"
 
 aws ecs update-service \
     --cluster "$ECS_CLUSTER" \
@@ -195,10 +258,10 @@ echo -e "${GREEN}  ECS service updated.${NC}"
 echo
 
 # ============================================================================
-# Step 4: Frontend Build
+# Step 5: Frontend Build
 # ============================================================================
 
-echo -e "${BLUE}[4/6] Frontend build${NC}"
+echo -e "${BLUE}[5/7] Frontend build${NC}"
 
 cat > "$FRONTEND_DIR/.env.production" <<EOF
 VITE_API_URL=${API_ENDPOINT}
@@ -215,10 +278,10 @@ echo -e "${GREEN}  Frontend built.${NC}"
 echo
 
 # ============================================================================
-# Step 5: Frontend Deploy
+# Step 6: Frontend Deploy
 # ============================================================================
 
-echo -e "${BLUE}[5/6] Frontend deploy to S3 + CloudFront${NC}"
+echo -e "${BLUE}[6/7] Frontend deploy to S3 + CloudFront${NC}"
 
 aws s3 sync "$FRONTEND_DIR/dist/" "s3://$FRONTEND_BUCKET/" --delete --quiet
 aws cloudfront create-invalidation \
@@ -231,32 +294,85 @@ echo -e "${GREEN}  Frontend deployed.${NC}"
 echo
 
 # ============================================================================
-# Step 6: Cognito User
+# Step 7: Cognito Users (one per RBAC role)
 # ============================================================================
+#
+# Creates one Cognito user per RBAC role. Each user is added to the matching
+# Cognito group so the JWT carries a `cognito:groups` claim — without group
+# membership, the backend defaults the role to VIEWER and the user cannot
+# deploy anything ("Requires operator role or higher").
+#
+# Roles (groups created by the cognito Terraform module):
+#   - admin    → Role.ADMIN     — full access (manage users, deploy, configure)
+#   - operator → Role.OPERATOR  — create/manage deployments
+#   - viewer   → Role.VIEWER    — read-only
+#
+# Admin is recommended (you'll want at least one). Operator and viewer are
+# optional; press Enter at the prompts to skip.
 
-echo -e "${BLUE}[6/6] Cognito user${NC}"
+echo -e "${BLUE}[7/7] Cognito users (one per role)${NC}"
+echo "  Each role corresponds to a Cognito group. Press Enter (empty email) to skip a role."
+echo "  Operator and viewer users are optional."
+echo
 
-read -p "  Create a Cognito user? (yes/no): " create_user
-if [ "$create_user" = "yes" ]; then
-    read -p "  Email: " user_email
+# Track which users got created for the summary
+ADMIN_EMAIL=""
+OPERATOR_EMAIL=""
+VIEWER_EMAIL=""
+
+# create_cognito_user <role> <description> [email_var_name]
+# Prompts for an email, creates the user, adds them to the group.
+create_cognito_user() {
+    local role="$1"
+    local description="$2"
+    local email_var="$3"
+    local email=""
+
+    local role_upper
+    role_upper=$(echo "$role" | tr '[:lower:]' '[:upper:]')
+    read -p "  ${role_upper} email (${description}): " email
+    if [ -z "$email" ]; then
+        echo -e "${YELLOW}  Skipped — no $role user created.${NC}"
+        echo
+        return 0
+    fi
 
     if aws cognito-idp admin-create-user \
         --user-pool-id "$COGNITO_USER_POOL_ID" \
-        --username "$user_email" \
+        --username "$email" \
         --temporary-password "TempPass1234!" \
-        --user-attributes "Name=email,Value=$user_email" \
+        --user-attributes "Name=email,Value=$email" \
         --region "$AWS_REGION" &> /dev/null; then
-        echo -e "${GREEN}  User created: $user_email${NC}"
-        echo -e "${YELLOW}  Temporary password: TempPass1234!${NC}"
-        echo "  You will be prompted to set a new password on first login."
+        echo -e "${GREEN}    User created: $email${NC}"
+        echo -e "${YELLOW}    Temporary password: TempPass1234!${NC}"
+        echo    "    User must set a new password on first login."
     else
-        echo -e "${YELLOW}  Could not create user (may already exist).${NC}"
+        echo -e "${YELLOW}    User already exists (skipping create, will still ensure group membership).${NC}"
     fi
-else
-    echo "  Skipped."
-fi
 
-echo
+    # Group membership is idempotent — safe to re-run.
+    if aws cognito-idp admin-add-user-to-group \
+        --user-pool-id "$COGNITO_USER_POOL_ID" \
+        --username "$email" \
+        --group-name "$role" \
+        --region "$AWS_REGION" &> /dev/null; then
+        echo -e "${GREEN}    Added to '$role' group.${NC}"
+        # Persist the email back to the caller via the named variable.
+        printf -v "$email_var" '%s' "$email"
+    else
+        echo -e "${YELLOW}    Could not add to '$role' group. Run manually:${NC}"
+        echo "      aws cognito-idp admin-add-user-to-group \\"
+        echo "        --user-pool-id $COGNITO_USER_POOL_ID \\"
+        echo "        --username $email \\"
+        echo "        --group-name $role \\"
+        echo "        --region $AWS_REGION"
+    fi
+    echo
+}
+
+create_cognito_user "admin"    "full access — deploy, manage, configure" ADMIN_EMAIL
+create_cognito_user "operator" "create + manage deployments (optional)" OPERATOR_EMAIL
+create_cognito_user "viewer"   "read-only (optional)"                   VIEWER_EMAIL
 
 # ============================================================================
 # Summary
@@ -270,4 +386,24 @@ echo -e "  Frontend:  ${FRONTEND_URL}"
 echo -e "  API:       ${API_ENDPOINT}"
 echo -e "  Cognito:   ${COGNITO_USER_POOL_ID}"
 echo -e "  ECR:       ${ECR_REPO}"
+echo
+echo -e "  Users:"
+if [ -n "$ADMIN_EMAIL" ]; then
+    echo -e "    ${GREEN}admin${NC}    → $ADMIN_EMAIL"
+else
+    echo -e "    ${YELLOW}admin    → not configured${NC}"
+fi
+if [ -n "$OPERATOR_EMAIL" ]; then
+    echo -e "    ${GREEN}operator${NC} → $OPERATOR_EMAIL"
+else
+    echo -e "    ${YELLOW}operator → not configured${NC}"
+fi
+if [ -n "$VIEWER_EMAIL" ]; then
+    echo -e "    ${GREEN}viewer${NC}   → $VIEWER_EMAIL"
+else
+    echo -e "    ${YELLOW}viewer   → not configured${NC}"
+fi
+echo
+echo -e "  Temporary password for any newly-created users: ${YELLOW}TempPass1234!${NC}"
+echo "  Each user must set a new password on first login."
 echo

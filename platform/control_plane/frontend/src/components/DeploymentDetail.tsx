@@ -18,6 +18,7 @@ export default function DeploymentDetail() {
   const [deployment, setDeployment] = useState<Deployment | null>(null);
   const [loading, setLoading] = useState(true);
   const [logsOpen, setLogsOpen] = useState(false);
+  const [runtimeLogsOpen, setRuntimeLogsOpen] = useState(false);
   const [destroying, setDestroying] = useState(false);
   const [destroyError, setDestroyError] = useState<string | null>(null);
   const [redeploying, setRedeploying] = useState(false);
@@ -220,7 +221,7 @@ export default function DeploymentDetail() {
         {showPipelineProgress && (
           <div className="card mb-6 animate-fade-in">
             <h3 className="text-base font-semibold text-slate-900 mb-4">Pipeline Progress</h3>
-            <PipelineProgress status={deployment.status} failedStage={deployment.failed_stage} />
+            <PipelineProgress status={deployment.status} failedStage={deployment.failed_stage} statusHistory={deployment.status_history} />
           </div>
         )}
 
@@ -234,7 +235,7 @@ export default function DeploymentDetail() {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-sm font-semibold text-red-900 mb-1">Deployment Failed</h3>
+                <h3 className="text-sm font-semibold text-red-900 mb-1">{deployment.status_history && [...deployment.status_history].reverse().find(e => e.status !== 'failed')?.status === 'destroying' ? 'Destroy Failed' : 'Deployment Failed'}</h3>
                 {deployment.failed_stage && (
                   <p className="text-xs text-red-700 mb-2">Failed at stage: <span className="font-semibold">{deployment.failed_stage}</span></p>
                 )}
@@ -379,6 +380,57 @@ export default function DeploymentDetail() {
           );
         })()}
 
+        {deployment.status === 'deployed' && ['true','True','TRUE','1'].includes(String(deployment.outputs?.agentcore_observability_enabled ?? '')) && (
+          <div className="card bg-sky-50/60 border-sky-200/60 mb-6 animate-fade-in">
+            <h3 className="text-base font-semibold text-sky-900 mb-4 flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-sky-100 flex items-center justify-center">
+                <svg className="w-4 h-4 text-sky-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12h3m12 0h3M5.636 5.636l2.122 2.122m8.484 8.484l2.122 2.122M12 3v3m0 12v3M5.636 18.364l2.122-2.122m8.484-8.484l2.122-2.122" />
+                </svg>
+              </div>
+              CloudWatch Observability
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              {deployment.outputs?.agentcore_log_group_name && (
+                <div className="p-3 bg-white border border-sky-200/60 rounded-xl">
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Log Group</div>
+                  <div className="text-xs font-mono text-slate-900 break-all">{deployment.outputs.agentcore_log_group_name}</div>
+                </div>
+              )}
+              {deployment.outputs?.use_case_id && (
+                <div className="p-3 bg-white border border-sky-200/60 rounded-xl">
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Use Case</div>
+                  <div className="text-xs font-mono text-slate-900 break-all">{deployment.outputs.use_case_id}</div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setRuntimeLogsOpen(true)}
+                className="text-xs px-3 py-2 rounded-lg font-semibold bg-sky-600 text-white hover:bg-sky-700 transition-colors"
+              >
+                View runtime logs
+              </button>
+              {(() => {
+                const region = deployment.aws_region || 'us-east-1';
+                const href = `https://${region}.console.aws.amazon.com/cloudwatch/home?region=${region}#/gen-ai-observability/agent-core/agents`;
+                return (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs px-3 py-2 rounded-lg font-semibold bg-white border border-sky-200 text-sky-700 hover:bg-sky-50 transition-colors"
+                  >
+                    Bedrock AgentCore Observability Dashboard ↗
+                  </a>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
         {destroyError && (
           <div className="card bg-red-50 border-red-200 mb-6 animate-fade-in">
             <p className="text-red-700">{destroyError}</p>
@@ -493,7 +545,7 @@ export default function DeploymentDetail() {
                     View Logs
                   </button>
                 )}
-                {(deployment.status === 'deployed' || deployment.status === 'failed') && (
+                {!isAppFactory && (deployment.status === 'deployed' || deployment.status === 'failed') && (
                   <button
                     onClick={handleRedeploy}
                     disabled={redeploying}
@@ -509,10 +561,10 @@ export default function DeploymentDetail() {
                     {redeploying ? 'Redeploying...' : 'Redeploy'}
                   </button>
                 )}
-                {redeployError && (
+                {!isAppFactory && redeployError && (
                   <p className="text-xs text-red-600 mt-1">{redeployError}</p>
                 )}
-                {(deployment.status === 'deployed' || deployment.status === 'failed') && (
+                {!isAppFactory && (deployment.status === 'deployed' || deployment.status === 'failed') && (
                   <button
                     onClick={handleDestroy}
                     disabled={destroying}
@@ -534,7 +586,8 @@ export default function DeploymentDetail() {
         </div>
       </div>
 
-      {id && <LogsViewer deploymentId={id} isOpen={logsOpen} onClose={() => setLogsOpen(false)} />}
+      {id && <LogsViewer deploymentId={id} isOpen={logsOpen} onClose={() => setLogsOpen(false)} source="build" />}
+      {id && <LogsViewer deploymentId={id} isOpen={runtimeLogsOpen} onClose={() => setRuntimeLogsOpen(false)} source="runtime" />}
       {testDrawerOpen && (
         <TestDeploymentDrawer
           deployment={deployment}

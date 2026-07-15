@@ -228,14 +228,63 @@ variable "codecommit_enable_notifications" {
   default     = false
 }
 
-variable "extra_cors_origins" {
-  description = "Extra origins permitted by the backend CORS middleware — use for vanity domains or out-of-band CloudFront distributions (e.g. ava-demo.fsi.pace.aws.dev)."
-  type        = list(string)
-  default     = []
+# ============================================================================
+# Docker Hub credentials (optional, used by langfuse foundation-stack deploys)
+# ============================================================================
+# The langfuse module pulls 3 images (langfuse, langfuse-worker, clickhouse)
+# from docker.io to mirror into ECR. Anonymous pulls hit the 100/6hr cap fast,
+# so the deploy script reads `dockerhub-credentials` from Secrets Manager and
+# authenticates if it exists. Leave both empty to skip — the script falls back
+# to anonymous pulls (which work for low-volume but break under demo traffic).
+
+variable "dockerhub_username" {
+  description = "Docker Hub username (optional). Used by langfuse deploys to authenticate to docker.io and double the pull rate limit."
+  type        = string
+  default     = ""
+  sensitive   = true
 }
 
-variable "extra_frontend_cloudfront_arns" {
-  description = "Extra CloudFront distribution ARNs that must read the frontend S3 bucket via OAC (e.g. the vanity-aliased distribution)."
-  type        = list(string)
-  default     = []
+variable "dockerhub_token" {
+  description = "Docker Hub personal access token (optional). Pair with dockerhub_username. Use a read-only Public Repos PAT — that's all the langfuse pulls need."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+# ============================================================================
+# Demo user seeding (optional, off by default)
+# ============================================================================
+# When seed_demo_users = true, the cognito module creates admin@example.com
+# (admin group) and demo@example.com (viewer group) with permanent passwords.
+# Convenience for fresh stamps so the first login works without a manual
+# cognito-idp admin-create-user call. Leave off in production stamps.
+
+variable "seed_demo_users" {
+  description = "Create demo admin + viewer users in Cognito (admin@example.com / demo@example.com). Off by default."
+  type        = bool
+  default     = false
+}
+
+variable "demo_admin_password" {
+  description = "Permanent password for the seeded admin@example.com user. Used only when seed_demo_users=true."
+  type        = string
+  default     = "AdminPass123!@"
+  sensitive   = true
+}
+
+variable "demo_viewer_password" {
+  description = "Permanent password for the seeded demo@example.com user. Used only when seed_demo_users=true."
+  type        = string
+  default     = "DemoViewer123!@#"
+  sensitive   = true
+}
+
+# Service-approval AgentCore Runtime ARN. Source:
+# applications/service_approval_v2/runtime/ terraform output. Capture
+# from there and pass via -var or tfvars; the backend's create_run
+# invokes this directly.
+variable "service_approval_agent_runtime_arn" {
+  description = "AgentCore Runtime ARN for service-approval Path B"
+  type        = string
+  default     = ""
 }
