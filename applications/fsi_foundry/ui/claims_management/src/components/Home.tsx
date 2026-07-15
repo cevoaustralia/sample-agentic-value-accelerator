@@ -23,19 +23,19 @@ const pipelineStages = [
   {
     title: 'Claims Intake',
     desc: 'AI validates submissions, identifies claim type, checks documentation completeness, and flags missing items',
-    color: '#0284C7',
+    color: '#FF8F00',
     iconPath: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
   },
   {
     title: 'Damage Assessment',
     desc: 'Evaluate damage severity, estimate repair and replacement costs, and assess evidence quality',
-    color: '#F97316',
+    color: '#D3145A',
     iconPath: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
   },
   {
     title: 'Settlement Recommendation',
     desc: 'Generate settlement amounts with confidence scoring based on policy coverage and comparable claims',
-    color: '#16A34A',
+    color: '#7204B9',
     iconPath: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
   },
 ];
@@ -67,7 +67,7 @@ export default function Home({ config }: Props) {
           style={{ borderColor: 'var(--stone-200)', background: 'white' }}>
           <div className="flex items-center gap-2 px-4 py-2 border-b" style={{ borderColor: 'var(--stone-100)', background: 'var(--charcoal)' }}>
             <div className="claims-pulse open" />
-            <span className="text-xs font-bold" style={{ color: '#38BDF8' }}>CLAIMS PROCESSING FEED</span>
+            <span className="text-xs font-bold" style={{ color: '#FF8F00' }}>CLAIMS PROCESSING FEED</span>
           </div>
           <div className="divide-y" style={{ borderColor: 'var(--stone-200)' }}>
             {sampleClaims.map((claim, i) => (
@@ -148,7 +148,7 @@ export default function Home({ config }: Props) {
               </div>
               {i < pipelineStages.length - 1 && (
                 <svg width="32" height="24" viewBox="0 0 32 24" fill="none">
-                  <path d="M4 12h20m0 0l-6-6m6 6l-6 6" stroke="#0284C7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M4 12h20m0 0l-6-6m6 6l-6 6" stroke="#FF8F00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               )}
             </div>
@@ -176,7 +176,7 @@ export default function Home({ config }: Props) {
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                   style={{ background: cat.level === 'high' ? 'var(--sky-50)' : cat.level === 'medium' ? 'var(--coral-50)' : 'var(--stone-100)' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                    stroke={cat.level === 'high' ? 'var(--sky-700)' : cat.level === 'medium' ? '#F97316' : 'var(--stone-500)'}
+                    stroke={cat.level === 'high' ? 'var(--sky-700)' : cat.level === 'medium' ? '#D3145A' : 'var(--stone-500)'}
                     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d={cat.icon} />
                   </svg>
@@ -201,22 +201,22 @@ export default function Home({ config }: Props) {
           <svg viewBox="0 0 960 520" fill="none" className="w-full">
             <defs>
               <marker id="arrowSky" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                <path d="M0,0 L8,3 L0,6 Z" fill="#0284C7" />
+                <path d="M0,0 L8,3 L0,6 Z" fill="#FF8F00" />
               </marker>
             </defs>
 
             {/* ── Row 1: User -> CloudFront -> S3 ── */}
-            <rect x="40" y="20" width="100" height="70" rx="10" fill="#F0F9FF" stroke="#0284C7" strokeWidth="1.5" />
-            <text x="90" y="50" textAnchor="middle" fill="#0284C7" fontSize="11" fontWeight="600">User Browser</text>
+            <rect x="40" y="20" width="100" height="70" rx="10" fill="#FFF8F0" stroke="#FF8F00" strokeWidth="1.5" />
+            <text x="90" y="50" textAnchor="middle" fill="#FF8F00" fontSize="11" fontWeight="600">User Browser</text>
             <text x="90" y="66" textAnchor="middle" fill="#78716C" fontSize="8">SPA Client</text>
 
-            <line x1="140" y1="55" x2="220" y2="55" stroke="#0284C7" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
+            <line x1="140" y1="55" x2="220" y2="55" stroke="#FF8F00" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
 
             <image href="/aws-icons/Arch_Amazon-CloudFront_48.svg" x="232" y="22" width="36" height="36" />
             <text x="250" y="74" textAnchor="middle" fill="#292524" fontSize="10" fontWeight="600">CloudFront</text>
             <text x="250" y="86" textAnchor="middle" fill="#78716C" fontSize="8">CDN + SPA Rewrite</text>
 
-            <line x1="280" y1="55" x2="370" y2="55" stroke="#0284C7" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
+            <line x1="280" y1="55" x2="370" y2="55" stroke="#FF8F00" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
             <text x="325" y="48" textAnchor="middle" fill="#A8A29E" fontSize="7">OAC</text>
 
             <image href="/aws-icons/Arch_Amazon-Simple-Storage-Service_48.svg" x="382" y="22" width="36" height="36" />
@@ -224,9 +224,9 @@ export default function Home({ config }: Props) {
             <text x="400" y="86" textAnchor="middle" fill="#78716C" fontSize="8">Static UI Assets</text>
 
             {/* CloudFront -> API Gateway (down to row 2) */}
-            <line x1="250" y1="90" x2="250" y2="130" stroke="#0284C7" strokeWidth="1.5" />
-            <line x1="250" y1="130" x2="100" y2="130" stroke="#0284C7" strokeWidth="1.5" />
-            <line x1="100" y1="130" x2="100" y2="160" stroke="#0284C7" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
+            <line x1="250" y1="90" x2="250" y2="130" stroke="#FF8F00" strokeWidth="1.5" />
+            <line x1="250" y1="130" x2="100" y2="130" stroke="#FF8F00" strokeWidth="1.5" />
+            <line x1="100" y1="130" x2="100" y2="160" stroke="#FF8F00" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
             <text x="175" y="126" textAnchor="middle" fill="#A8A29E" fontSize="7">/api/* routing</text>
 
             {/* ── Row 2: API Gateway -> Lambda Proxy -> Lambda Worker <-> DynamoDB ── */}
@@ -234,49 +234,49 @@ export default function Home({ config }: Props) {
             <text x="100" y="214" textAnchor="middle" fill="#292524" fontSize="10" fontWeight="600">API Gateway</text>
             <text x="100" y="226" textAnchor="middle" fill="#78716C" fontSize="8">HTTP API</text>
 
-            <line x1="130" y1="180" x2="230" y2="180" stroke="#0284C7" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
+            <line x1="130" y1="180" x2="230" y2="180" stroke="#FF8F00" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
 
             <image href="/aws-icons/Arch_AWS-Lambda_48.svg" x="242" y="162" width="36" height="36" />
             <text x="260" y="214" textAnchor="middle" fill="#292524" fontSize="10" fontWeight="600">Lambda Proxy</text>
             <text x="260" y="226" textAnchor="middle" fill="#78716C" fontSize="8">30s timeout</text>
             <text x="260" y="237" textAnchor="middle" fill="#A8A29E" fontSize="7">POST /invoke, GET /status</text>
 
-            <line x1="290" y1="180" x2="400" y2="180" stroke="#0284C7" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
+            <line x1="290" y1="180" x2="400" y2="180" stroke="#FF8F00" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
             <text x="345" y="174" textAnchor="middle" fill="#A8A29E" fontSize="7">async</text>
 
             <image href="/aws-icons/Arch_AWS-Lambda_48.svg" x="412" y="162" width="36" height="36" />
             <text x="430" y="214" textAnchor="middle" fill="#292524" fontSize="10" fontWeight="600">Lambda Worker</text>
             <text x="430" y="226" textAnchor="middle" fill="#78716C" fontSize="8">300s timeout</text>
 
-            <line x1="460" y1="180" x2="560" y2="180" stroke="#0284C7" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
-            <line x1="560" y1="186" x2="460" y2="186" stroke="#0284C7" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
+            <line x1="460" y1="180" x2="560" y2="180" stroke="#FF8F00" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
+            <line x1="560" y1="186" x2="460" y2="186" stroke="#FF8F00" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
 
             <image href="/aws-icons/Arch_Amazon-DynamoDB_48.svg" x="572" y="162" width="36" height="36" />
             <text x="590" y="214" textAnchor="middle" fill="#292524" fontSize="10" fontWeight="600">DynamoDB</text>
             <text x="590" y="226" textAnchor="middle" fill="#78716C" fontSize="8">Session State + TTL</text>
 
             {/* ── Row 3: AgentCore Runtime -> Agents -> Bedrock, ECR connected ── */}
-            <line x1="430" y1="240" x2="430" y2="280" stroke="#0284C7" strokeWidth="1.5" />
-            <line x1="430" y1="280" x2="160" y2="280" stroke="#0284C7" strokeWidth="1.5" />
-            <line x1="160" y1="280" x2="160" y2="320" stroke="#0284C7" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
+            <line x1="430" y1="240" x2="430" y2="280" stroke="#FF8F00" strokeWidth="1.5" />
+            <line x1="430" y1="280" x2="160" y2="280" stroke="#FF8F00" strokeWidth="1.5" />
+            <line x1="160" y1="280" x2="160" y2="320" stroke="#FF8F00" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
 
             <image href="/aws-icons/Arch_Amazon-Bedrock-AgentCore_48.svg" x="142" y="322" width="36" height="36" />
             <text x="160" y="374" textAnchor="middle" fill="#292524" fontSize="10" fontWeight="600">AgentCore Runtime</text>
             <text x="160" y="386" textAnchor="middle" fill="#78716C" fontSize="8">Bedrock Managed Container</text>
 
-            <line x1="200" y1="340" x2="310" y2="340" stroke="#0284C7" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
+            <line x1="200" y1="340" x2="310" y2="340" stroke="#FF8F00" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
 
             {/* Agent boxes - Sky, Coral, Green */}
-            <rect x="320" y="305" width="120" height="32" rx="6" fill="#F0F9FF" stroke="#0284C7" strokeWidth="1.5" />
-            <text x="380" y="325" textAnchor="middle" fill="#0284C7" fontSize="9" fontWeight="600">Claims Intake Agent</text>
+            <rect x="320" y="305" width="120" height="32" rx="6" fill="#FFF8F0" stroke="#FF8F00" strokeWidth="1.5" />
+            <text x="380" y="325" textAnchor="middle" fill="#FF8F00" fontSize="9" fontWeight="600">Claims Intake Agent</text>
 
-            <rect x="320" y="345" width="120" height="32" rx="6" fill="#FFF7ED" stroke="#F97316" strokeWidth="1.5" />
-            <text x="380" y="365" textAnchor="middle" fill="#EA580C" fontSize="9" fontWeight="600">Damage Assessor</text>
+            <rect x="320" y="345" width="120" height="32" rx="6" fill="#FFF0F3" stroke="#D3145A" strokeWidth="1.5" />
+            <text x="380" y="365" textAnchor="middle" fill="#D3145A" fontSize="9" fontWeight="600">Damage Assessor</text>
 
-            <rect x="320" y="385" width="120" height="32" rx="6" fill="#F0FDF4" stroke="#16A34A" strokeWidth="1.5" />
-            <text x="380" y="405" textAnchor="middle" fill="#15803D" fontSize="9" fontWeight="600">Settlement Recommender</text>
+            <rect x="320" y="385" width="120" height="32" rx="6" fill="#F3E5F5" stroke="#7204B9" strokeWidth="1.5" />
+            <text x="380" y="405" textAnchor="middle" fill="#7204B9" fontSize="9" fontWeight="600">Settlement Recommender</text>
 
-            <line x1="440" y1="360" x2="540" y2="360" stroke="#0284C7" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
+            <line x1="440" y1="360" x2="540" y2="360" stroke="#FF8F00" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
 
             <image href="/aws-icons/Arch_Amazon-Bedrock_48.svg" x="552" y="342" width="36" height="36" />
             <text x="570" y="394" textAnchor="middle" fill="#292524" fontSize="10" fontWeight="600">Amazon Bedrock</text>
@@ -286,7 +286,7 @@ export default function Home({ config }: Props) {
             <image href="/aws-icons/Arch_Amazon-Elastic-Container-Registry_48.svg" x="142" y="430" width="36" height="36" />
             <text x="160" y="482" textAnchor="middle" fill="#292524" fontSize="10" fontWeight="600">ECR</text>
             <text x="160" y="494" textAnchor="middle" fill="#78716C" fontSize="8">Container Images</text>
-            <line x1="160" y1="430" x2="160" y2="392" stroke="#0284C7" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
+            <line x1="160" y1="430" x2="160" y2="392" stroke="#FF8F00" strokeWidth="1.5" markerEnd="url(#arrowSky)" />
 
             {/* Monitoring sidebar */}
             <image href="/aws-icons/Arch_Amazon-CloudWatch_48.svg" x="802" y="162" width="36" height="36" />
@@ -309,9 +309,9 @@ export default function Home({ config }: Props) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {config.agents.map((agent, i) => {
             const colors = [
-              { bg: '#F0F9FF', border: '#0284C7', text: '#0284C7', accent: '#F0F9FF' },
-              { bg: '#FFF7ED', border: '#F97316', text: '#EA580C', accent: '#FFF7ED' },
-              { bg: '#F0FDF4', border: '#16A34A', text: '#15803D', accent: '#F0FDF4' },
+              { bg: '#FFF8F0', border: '#FF8F00', text: '#FF8F00', accent: '#FFF8F0' },
+              { bg: '#FFF0F3', border: '#D3145A', text: '#D3145A', accent: '#FFF0F3' },
+              { bg: '#F3E5F5', border: '#7204B9', text: '#7204B9', accent: '#F3E5F5' },
             ][i];
             const icons = [
               'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
@@ -339,14 +339,14 @@ export default function Home({ config }: Props) {
 
       {/* ── CTA ── */}
       <section className="text-center animate-fadeSlideUp stagger-6 pb-8">
-        <div className="card max-w-lg mx-auto" style={{ background: 'linear-gradient(135deg, #F0F9FF, #FFF7ED)' }}>
+        <div className="card max-w-lg mx-auto" style={{ background: 'linear-gradient(135deg, #FFF8F0, #FFF0F3)' }}>
           <h3 className="text-xl font-extrabold mb-2 heading-dash" style={{ color: 'var(--charcoal)' }}>Ready to process claims?</h3>
           <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
             Try the assessment engine with test claim <code className="px-2 py-0.5 rounded text-xs font-bold" style={{ background: 'white', color: 'var(--sky-700)' }}>CLM001</code>
           </p>
           <Link to="/console"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:scale-105"
-            style={{ background: 'linear-gradient(135deg, #0284C7, #38BDF8)' }}>
+            style={{ background: 'linear-gradient(135deg, #FF8F00, #F05A2A)' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>

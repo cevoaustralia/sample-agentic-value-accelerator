@@ -84,7 +84,7 @@ export default function AgentConsole({ config }: Props) {
             placeholder={input_schema.id_placeholder}
             className="w-full px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all duration-200 outline-none"
             style={{
-              borderColor: entityId ? '#38BDF8' : '#E7E5E4',
+              borderColor: entityId ? '#F05A2A' : '#E7E5E4',
               background: entityId ? 'var(--sky-50)' : 'white',
             }}
             onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
@@ -124,7 +124,7 @@ export default function AgentConsole({ config }: Props) {
                   }}
                 >
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ background: selected ? 'linear-gradient(135deg, #0284C7, #38BDF8)' : '#F5F5F4' }}>
+                    style={{ background: selected ? 'linear-gradient(135deg, #FF8F00, #F05A2A)' : '#F5F5F4' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                       stroke={selected ? 'white' : '#78716C'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d={typeIcons[opt.value] || typeIcons.full} />
@@ -144,7 +144,7 @@ export default function AgentConsole({ config }: Props) {
           onClick={handleSubmit}
           disabled={!entityId.trim() || status === 'running'}
           className="w-full py-3.5 rounded-xl text-sm font-bold text-white transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99]"
-          style={{ background: 'linear-gradient(135deg, #0284C7, #38BDF8)' }}
+          style={{ background: 'linear-gradient(135deg, #FF8F00, #F05A2A)' }}
         >
           {status === 'running' ? (
             <span className="flex items-center justify-center gap-2">
@@ -181,7 +181,7 @@ export default function AgentConsole({ config }: Props) {
                       background: activeStep > i
                         ? 'var(--sky-700)'
                         : activeStep === i
-                          ? 'linear-gradient(135deg, #0284C7, #38BDF8)'
+                        ? 'linear-gradient(135deg, #FF8F00, #F05A2A)'
                           : '#F5F5F4',
                     }}
                   >
@@ -211,7 +211,7 @@ export default function AgentConsole({ config }: Props) {
           {/* Agent Status Cards */}
           <div className="grid grid-cols-3 gap-3">
             {config.agents.map((agent, i) => {
-              const agentColors = ['#0284C7', '#F97316', '#16A34A'];
+              const agentColors = ['#FF8F00', '#D3145A', '#7204B9'];
               const isActive = activeStep === i;
               const isDone = activeStep > i;
               return (

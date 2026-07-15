@@ -7,7 +7,7 @@ interface Props {
 }
 
 /* ── Helper: Radial progress circle ── */
-function RadialProgress({ value, size = 72, stroke = 6, color = '#0284C7' }: { value: number; size?: number; stroke?: number; color?: string }) {
+function RadialProgress({ value, size = 72, stroke = 6, color = '#FF8F00' }: { value: number; size?: number; stroke?: number; color?: string }) {
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (value / 100) * circumference;
@@ -26,7 +26,7 @@ function RadialProgress({ value, size = 72, stroke = 6, color = '#0284C7' }: { v
 /* ── Helper: Confidence bar ── */
 function ConfidenceBar({ value }: { value: number }) {
   const pct = Math.round(value * 100);
-  const color = pct >= 80 ? '#16A34A' : pct >= 60 ? '#0284C7' : pct >= 40 ? '#EAB308' : '#78716C';
+  const color = pct >= 80 ? '#16A34A' : pct >= 60 ? '#FF8F00' : pct >= 40 ? '#EAB308' : '#78716C';
   return (
     <div className="flex items-center gap-2">
       <div className="progress-bar flex-1" style={{ height: '6px' }}>
@@ -50,19 +50,19 @@ function CostComparisonBar({ repair, replacement }: { repair: number; replacemen
       <div>
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>Estimated Repair</span>
-          <span className="text-xs font-bold" style={{ color: '#0284C7' }}>{formatCurrency(repair)}</span>
+          <span className="text-xs font-bold" style={{ color: '#FF8F00' }}>{formatCurrency(repair)}</span>
         </div>
         <div className="cost-bar">
-          <div className="cost-bar-fill" style={{ width: `${(repair / max) * 100}%`, background: 'linear-gradient(90deg, #0284C7, #38BDF8)' }} />
+          <div className="cost-bar-fill" style={{ width: `${(repair / max) * 100}%`, background: 'linear-gradient(90deg, #FF8F00, #F05A2A)' }} />
         </div>
       </div>
       <div>
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>Estimated Replacement</span>
-          <span className="text-xs font-bold" style={{ color: '#F97316' }}>{formatCurrency(replacement)}</span>
+          <span className="text-xs font-bold" style={{ color: '#D3145A' }}>{formatCurrency(replacement)}</span>
         </div>
         <div className="cost-bar">
-          <div className="cost-bar-fill" style={{ width: `${(replacement / max) * 100}%`, background: 'linear-gradient(90deg, #F97316, #FB923C)' }} />
+          <div className="cost-bar-fill" style={{ width: `${(replacement / max) * 100}%`, background: 'linear-gradient(90deg, #D3145A, #E91E63)' }} />
         </div>
       </div>
     </div>
@@ -72,7 +72,7 @@ function CostComparisonBar({ repair, replacement }: { repair: number; replacemen
 /* ── Helper: Comparable settlement card ── */
 function ComparableCard({ settlement, index }: { settlement: ComparableSettlement; index: number }) {
   const similarityPct = Math.round(settlement.similarity_score * 100);
-  const simColor = similarityPct >= 80 ? '#16A34A' : similarityPct >= 60 ? '#0284C7' : '#EAB308';
+  const simColor = similarityPct >= 80 ? '#16A34A' : similarityPct >= 60 ? '#FF8F00' : '#EAB308';
 
   return (
     <div className="comparable-card animate-signalReveal" style={{ animationDelay: `${index * 0.1}s` }}>
@@ -98,7 +98,7 @@ function ResultsPanelInternal({ result }: Props) {
   const { intake_summary, damage_assessment, settlement_recommendation } = result;
 
   const confidencePct = settlement_recommendation ? Math.round(settlement_recommendation.confidence_score * 100) : 0;
-  const confidenceColor = confidencePct >= 80 ? '#16A34A' : confidencePct >= 60 ? '#0284C7' : confidencePct >= 40 ? '#EAB308' : '#78716C';
+  const confidenceColor = confidencePct >= 80 ? '#16A34A' : confidencePct >= 60 ? '#FF8F00' : confidencePct >= 40 ? '#EAB308' : '#78716C';
 
   const severityLevel = damage_assessment?.severity.toLowerCase() ?? 'low';
   const evidenceLevel = damage_assessment?.evidence_quality.toLowerCase() ?? 'fair';
@@ -272,7 +272,7 @@ function ResultsPanelInternal({ result }: Props) {
           {/* Damage Assessment */}
           {damage_assessment && (
             <div className="card animate-fadeSlideUp stagger-2">
-              <h3 className="text-sm font-extrabold mb-4 flex items-center gap-2 heading-dash" style={{ color: '#EA580C' }}>
+              <h3 className="text-sm font-extrabold mb-4 flex items-center gap-2 heading-dash" style={{ color: '#D3145A' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
@@ -299,7 +299,7 @@ function ResultsPanelInternal({ result }: Props) {
                       <div key={i} className="flex items-start gap-2 animate-signalReveal" style={{ animationDelay: `${i * 0.08}s` }}>
                         <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
                           style={{ background: 'var(--coral-50)' }}>
-                          <span className="text-xs font-bold" style={{ color: '#EA580C' }}>{i + 1}</span>
+                          <span className="text-xs font-bold" style={{ color: '#D3145A' }}>{i + 1}</span>
                         </div>
                         <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{finding}</p>
                       </div>
@@ -310,7 +310,7 @@ function ResultsPanelInternal({ result }: Props) {
 
               {/* Assessment Notes */}
               {damage_assessment.notes && (
-                <div className="p-3 rounded-xl" style={{ background: 'var(--coral-50)', borderLeft: '3px solid #F97316' }}>
+                <div className="p-3 rounded-xl" style={{ background: 'var(--coral-50)', borderLeft: '3px solid #D3145A' }}>
                   <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{damage_assessment.notes}</p>
                 </div>
               )}
@@ -409,7 +409,7 @@ function ResultsPanelInternal({ result }: Props) {
       {result.summary && (
         <div className="card animate-fadeSlideUp stagger-3" style={{ borderLeft: '4px solid var(--sky-700)' }}>
           <h3 className="text-sm font-extrabold mb-2 flex items-center gap-2 heading-dash" style={{ color: 'var(--charcoal)' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0284C7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF8F00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 6h16M4 12h16M4 18h7" />
             </svg>
             Assessment Summary
