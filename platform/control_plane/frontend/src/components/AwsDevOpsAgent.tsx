@@ -4,6 +4,7 @@ import { deploymentsApi, frontierAgentsApi, type FrontierAgentCatalogEntry, type
 import type { Deployment } from '../types';
 import { useUser } from '../contexts/UserContext';
 import LoadingSpinner from './LoadingSpinner';
+import { openOperatorApp } from '../lib/operatorAppLauncher';
 
 const AGENT_ID = 'aws-devops';
 const TEMPLATE_ID = `frontier-agents-${AGENT_ID}`;
@@ -264,7 +265,7 @@ export default function AwsDevOpsAgent() {
                   {operatorUrl && (
                     <button
                       type="button"
-                      onClick={() => window.open(operatorUrl, '_blank')}
+                      onClick={() => openOperatorApp(AGENT_ID, operatorUrl)}
                       className="text-sm py-2 rounded-lg font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-colors inline-flex items-center justify-center gap-1.5"
                     >
                       Open Operator App

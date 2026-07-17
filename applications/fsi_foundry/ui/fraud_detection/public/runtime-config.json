@@ -3,8 +3,24 @@
   "use_case_name": "Fraud Detection",
   "description": "AI-powered fraud detection with transaction monitoring and pattern analysis",
   "domain": "FSI",
-  "agents": [{"id":"transaction_monitor","name":"Transaction Monitor","description":"Specialized AI agent: Transaction Monitor"},{"id":"pattern_analyst","name":"Pattern Analyst","description":"Specialized AI agent: Pattern Analyst"},{"id":"alert_generator","name":"Alert Generator","description":"Specialized AI agent: Alert Generator"}],
-  "api_endpoint": "https://d3uwmir4o2j6ew.cloudfront.net/api/invoke",
+  "agents": [
+    {
+      "id": "transaction_monitor",
+      "name": "Transaction Monitor",
+      "description": "Specialized AI agent: Transaction Monitor"
+    },
+    {
+      "id": "pattern_analyst",
+      "name": "Pattern Analyst",
+      "description": "Specialized AI agent: Pattern Analyst"
+    },
+    {
+      "id": "alert_generator",
+      "name": "Alert Generator",
+      "description": "Specialized AI agent: Alert Generator"
+    }
+  ],
+  "api_endpoint": "https://<distribution>.cloudfront.net/api/invoke",
   "input_schema": {
     "id_field": "customer_id",
     "id_label": "Entity ID",

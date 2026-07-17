@@ -106,8 +106,49 @@ resource "aws_iam_role_policy" "ecs_task_dynamodb" {
           var.app_factory_table_arn,
           "${var.app_factory_table_arn}/index/*",
           var.guardrails_table_arn,
-          "${var.guardrails_table_arn}/index/*"
+          "${var.guardrails_table_arn}/index/*",
+          var.prioritization_table_arn,
+          "${var.prioritization_table_arn}/index/*",
+          var.maturity_table_arn,
+          "${var.maturity_table_arn}/index/*",
+          var.business_cases_table_arn,
+          "${var.business_cases_table_arn}/index/*",
+          var.operating_model_table_arn,
+          "${var.operating_model_table_arn}/index/*",
+          var.service_approval_table_arn,
+          "${var.service_approval_table_arn}/index/*"
         ]
+      }
+    ]
+  })
+}
+
+# Policy for Security Agent existence detection.
+# The aws-security frontier agent's deploy route auto-detects whether an
+# AWS::SecurityAgent::Application already exists in the account before
+# zipping the IaC. Without these permissions the singleton-aware logic
+# falls back to user-supplied parameters and re-creates the singleton
+# resource, which then fails CFN/Terraform with "Application already exists".
+resource "aws_iam_role_policy" "ecs_task_security_agent_detect" {
+  name = "security-agent-detect"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          # Cloud Control API uses cloudformation:* under the hood; both
+          # action namespaces must be allowed for the SDK call to succeed.
+          "cloudformation:ListResources",
+          "cloudformation:GetResource",
+          "cloudcontrol:ListResources",
+          "cloudcontrol:GetResource",
+          "securityagent:GetApplication",
+          "securityagent:ListApplications"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -135,6 +176,8 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
           "${var.project_archives_bucket_arn}/*",
           var.frontend_bucket_arn,
           "${var.frontend_bucket_arn}/*",
+          var.service_approval_bucket_arn,
+          "${var.service_approval_bucket_arn}/*",
           "arn:aws:s3:::fsi-*",
           "arn:aws:s3:::fsi-*/*",
           "arn:aws:s3:::ava-*",
@@ -146,28 +189,30 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
 }
 
 # Policy for Step Functions access
-resource "aws_iam_role_policy" "ecs_task_step_functions" {
-  name = "step-functions-access"
+# Service-approval Path B: backend's create_run calls
+# bedrock-agentcore:InvokeAgentRuntime against the v2 module's runtime.
+# Scoped to runtimes under this account so the backend can't accidentally
+# invoke arbitrary AgentCore runtimes elsewhere.
+resource "aws_iam_role_policy" "ecs_task_agentcore_invoke" {
+  name = "service-approval-agentcore-invoke"
   role = aws_iam_role.ecs_task.id
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "states:StartExecution",
-          "states:DescribeExecution",
-          "states:StopExecution",
-          "states:ListExecutions"
-        ]
-        Resource = "arn:aws:states:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:stateMachine:${var.name_prefix}-*"
-      }
-    ]
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "bedrock-agentcore:InvokeAgentRuntime",
+      ]
+      # Wildcard on runtime-id segment because AgentCore appends a random
+      # suffix at create-time. We can't pin to a specific runtime ARN at
+      # IaC-generation time without circular dependency on the v2 module.
+      Resource = "arn:aws:bedrock-agentcore:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:runtime/*"
+    }]
   })
 }
 
-# Policy for CloudWatch Logs access (CodeBuild logs retrieval)
+# Policy for CloudWatch Logs access (CodeBuild logs + AgentCore runtime logs)
 resource "aws_iam_role_policy" "ecs_task_logs" {
   name = "codebuild-logs-access"
   role = aws_iam_role.ecs_task.id
@@ -182,6 +227,20 @@ resource "aws_iam_role_policy" "ecs_task_logs" {
           "logs:DescribeLogStreams"
         ]
         Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:FilterLogEvents",
+          "logs:GetLogEvents",
+          "logs:DescribeLogStreams",
+        ]
+        Resource = [
+          "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/*",
+          "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/bedrock-agentcore/*:log-stream:*",
+          "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/vendedlogs/bedrock-agentcore/*",
+          "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/vendedlogs/bedrock-agentcore/*:log-stream:*",
+        ]
       }
     ]
   })
@@ -295,7 +354,7 @@ resource "aws_security_group" "alb" {
 # ============================================================================
 
 resource "aws_lb" "main" {
-  name               = "cp-${var.environment}-alb"
+  name               = "${var.name_prefix}-alb"
   internal           = true
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
@@ -310,7 +369,7 @@ resource "aws_lb" "main" {
 }
 
 resource "aws_lb_target_group" "main" {
-  name        = "cp-${var.environment}-tg"
+  name        = "${var.name_prefix}-tg"
   port        = 8000
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
@@ -412,12 +471,32 @@ resource "aws_ecs_task_definition" "main" {
           value = var.guardrails_table_name
         },
         {
+          name  = "PRIORITIZATION_TABLE_NAME"
+          value = var.prioritization_table_name
+        },
+        {
+          name  = "MATURITY_TABLE_NAME"
+          value = var.maturity_table_name
+        },
+        {
+          name  = "BUSINESS_CASES_TABLE_NAME"
+          value = var.business_cases_table_name
+        },
+        {
+          name  = "OPERATING_MODEL_TABLE_NAME"
+          value = var.operating_model_table_name
+        },
+        {
           name  = "STATE_MACHINE_ARN"
           value = var.state_machine_arn
         },
         {
           name  = "FRONTIER_AGENTS_STATE_MACHINE_ARN"
           value = var.frontier_agents_state_machine_arn
+        },
+        {
+          name  = "FRONTIER_AGENTS_FEDERATION_ROLE_ARN"
+          value = var.frontier_agents_federation_role_arn
         },
         {
           name  = "AWS_DEFAULT_REGION"
@@ -434,6 +513,41 @@ resource "aws_ecs_task_definition" "main" {
         {
           name  = "CORS_ORIGINS"
           value = jsonencode(var.cors_origins)
+        },
+        {
+          name  = "SERVICE_APPROVAL_TABLE_NAME"
+          value = var.service_approval_table_name
+        },
+        {
+          name  = "SERVICE_APPROVAL_BUCKET"
+          value = var.service_approval_bucket
+        },
+        # Service-Approval Path B (post-Phase B decommission): backend
+        # invokes AgentCore directly. SFN/Fargate envs are gone.
+        {
+          name  = "SERVICE_APPROVAL_AGENT_RUNTIME_ARN"
+          value = var.service_approval_agent_runtime_arn
+        },
+        # Cognito + auth env vars. Without these the backend's _extract_role
+        # cannot decode JWTs and falls into a dev-mode bypass that returns
+        # Role.ADMIN for every user — every viewer gets deploy permission.
+        # Discovered the hard way on the golden redeploy. Required for any
+        # stamp where the UI runs against a real Cognito user pool.
+        {
+          name  = "USE_DEV_AUTH"
+          value = "false"
+        },
+        {
+          name  = "COGNITO_USER_POOL_ID"
+          value = var.cognito_user_pool_id
+        },
+        {
+          name  = "COGNITO_CLIENT_ID"
+          value = var.cognito_user_pool_client_id
+        },
+        {
+          name  = "COGNITO_REGION"
+          value = data.aws_region.current.name
         }
       ]
 

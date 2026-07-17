@@ -11412,87 +11412,116 @@ cat output.json | jq '.'
         title: 'Available Templates',
         content: `# Templates
 
-Templates are scaffolding tools for building custom agent applications. Each template includes infrastructure-as-code, agent framework implementations, and deployment scripts.
+Templates are downloadable building blocks for agent applications on AWS. They come in three tiers:
 
-## Foundation Templates (2)
+## Infrastructure Modules
 
-**Networking Base**
-- VPC with public and private subnets
-- NAT gateway and Internet gateway
-- Security groups
-- Terraform IaC
+Standalone Terraform projects for specific AWS resources. Download, customize \`terraform.tfvars\`, and deploy.
 
-**Observability Stack**
-- CloudWatch log groups and dashboards
-- Metrics and alarms
-- Terraform and CDK IaC
+| Module | What It Creates |
+|--------|----------------|
+| **Agent Runtime — AgentCore** | Bedrock AgentCore runtime + endpoint + ECR repository + IAM |
+| **Agent API Gateway** | HTTP or WebSocket API Gateway with JWT auth, throttling, CORS |
+| **Auth — Cognito** | User Pool + web client + service client + resource server + groups |
+| **Agent Memory — AgentCore** | AgentCore memory store + extraction strategy + IAM |
+| **Agent Guardrails** | Bedrock Guardrails with content filters, PII, topics, grounding |
+| **Knowledge Base — Bedrock** | Bedrock KB + OpenSearch Serverless + S3 data source |
+| **Agent Observability — Langfuse** | Langfuse v2 on ECS + Aurora + Redis (downloadable standalone) |
 
-## Use Case Templates (4)
+## Code Libraries
 
-**Strands AgentCore**
-- Single-agent pattern with Strands SDK
-- Supports Terraform, CDK, and CloudFormation
-- Bedrock AgentCore deployment
+Reusable Python patterns for both Strands and LangGraph frameworks.
 
-**LangGraph AgentCore**
-- Single-agent pattern with LangGraph
-- Supports Terraform, CDK, and CloudFormation
-- Bedrock AgentCore deployment
+| Library | What It Provides |
+|---------|-----------------|
+| **Agent Scaffold — Strands** | Production agent with tools, memory, AgentCore deployment |
+| **Agent Scaffold — LangGraph** | ReAct agent with tools, checkpointing, AgentCore deployment |
+| **Agent Test Harness** | LLM-as-judge evaluation + custom scoring |
+| **Multi-Agent Kit** | Agents-as-tools, Swarm, Supervisor patterns |
+| **Structured Output** | Pydantic-based typed responses from LLMs |
+| **Human-in-the-Loop** | Approval gates and interrupt/resume patterns |
 
-**Tool-Calling Agent**
-- Agent with external tool integrations
-- Dual framework support (Strands + LangGraph)
-- Terraform deployment
+## Starters
 
-**Multi-Agent Orchestration**
-- Coordinator pattern with multiple specialized agents
-- Framework-agnostic design
-- Terraform and CDK support`,
+Complete, deployable agent applications with both Strands and LangGraph implementations.
+
+| Starter | Pattern |
+|---------|---------|
+| **Conversational Assistant** | Single agent + tools + streaming + React UI |
+| **Research & Report Generator** | RAG + tools + structured output |
+| **Supervisor with Specialists** | Multi-agent supervisor routing |
+| **Workflow Pipeline** | Sequential deterministic pipeline |
+| **Event-Driven Agent** | EventBridge-triggered agent |
+| **Plan & Execute Agent** | Planning + execution + reflection |
+| **Human Approval Workflow** | Agent with approval gates |
+| **Evaluator-Optimizer** | Generator + critic loop |`,
       },
       {
         id: 'using-templates',
         title: 'Using Templates',
         content: `# Using Templates
 
-## Creating a Project from Template
+## Downloading a Template
 
-1. Navigate to **Templates** in the UI
-2. Select a template
-3. Choose your IaC option (Terraform, CDK, or CloudFormation)
-4. Select framework (if applicable)
-5. Configure parameters (project name, region, model selection)
-6. Click **Bootstrap** to generate project
+1. Navigate to **Templates** in the sidebar
+2. Toggle between **Starters**, **Modules**, or **Code** tabs
+3. Click a template card to view details
+4. Click **Download ZIP** to get the template
 
-The platform packages the template with your parameters and provides a downloadable zip file.
+## Infrastructure Modules — Quick Start
 
-## Project Structure
-
-\`\`\`
-my-project/
-├── template.json          # Configuration and metadata
-├── src/
-│   ├── strands/          # Strands implementation
-│   └── langraph/         # LangGraph implementation
-├── iac/
-│   ├── terraform/        # Terraform modules
-│   ├── cdk/             # CDK constructs (optional)
-│   └── cloudformation/  # CloudFormation (optional)
-├── Dockerfile            # Container definition
-├── requirements.txt      # Python dependencies
-└── README.md            # Documentation
-\`\`\`
-
-## Deploying Your Project
-
-**Option 1: Manual Deployment**
 \`\`\`bash
-cd my-project/iac/terraform
+# Unzip the downloaded template
+unzip agent-runtime-agentcore.zip
+cd agent-runtime-agentcore/iac/terraform
+
+# Configure
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your values
+
+# Deploy
 terraform init
+terraform plan
 terraform apply
 \`\`\`
 
-**Option 2: Via Control Plane**
-Upload your customized template back to the control plane and deploy through the automated pipeline.`,
+## Code Libraries — Quick Start
+
+\`\`\`bash
+# Unzip and install
+unzip multi-agent-kit.zip
+cd multi-agent-kit
+pip install -e .
+
+# Run the example
+python -m src.strands_agents_as_tools
+\`\`\`
+
+## Starters — Quick Start
+
+\`\`\`bash
+# Unzip
+unzip conversational-assistant.zip
+cd conversational-assistant
+
+# Install and run
+pip install -e .
+python -m src.main
+# Agent starts on http://localhost:8080
+\`\`\`
+
+## Deploy to AgentCore
+
+All agent scaffolds and starters include a Dockerfile for AgentCore deployment:
+
+\`\`\`bash
+# Build container
+docker build -t my-agent .
+
+# Push to ECR (use agent-runtime-agentcore module for ECR + runtime)
+aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_URL
+docker push $ECR_URL:v1.0.0
+\`\`\``,
       },
     ],
   },
@@ -11945,7 +11974,7 @@ export default function Documentation() {
       {/* Sidebar - fixed height with independent scroll */}
       <aside className={`
         w-64 flex-shrink-0 border-r border-slate-200 bg-white overflow-y-auto
-        fixed lg:relative inset-y-0 left-0 z-40 transform transition-transform duration-300 shadow-xl lg:shadow-none
+        fixed lg:relative inset-y-0 left-0 z-40 lg:z-auto transform transition-transform duration-300 shadow-xl lg:shadow-none
         h-full
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>

@@ -9,6 +9,8 @@ import {
   FORECAST_12M, UNIT_ECONOMICS, CHARGEBACK_STATEMENT, COMMITMENTS,
   tooltipStyle,
 } from './mockData';
+import { FinOpsGuide } from './ModuleGuide';
+import { MockDataBadge } from './DataSourceIndicator';
 
 const anomalySeverity: Record<string, string> = {
   warning: 'bg-amber-100 text-amber-700',
@@ -47,12 +49,17 @@ export default function FinOps() {
 
         <div className="flex items-end justify-between mt-3 mb-6">
           <div>
-            <h1 className="text-3xl font-semibold text-slate-900 tracking-tight">Cost & FinOps</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-semibold text-slate-900 tracking-tight">Cost & FinOps</h1>
+              <MockDataBadge integration="AWS Cost Explorer API + Cost Allocation Tags" />
+            </div>
             <p className="text-slate-500 mt-1 max-w-2xl">
               Spend posture, forecast, unit economics, chargeback, and commitment planning — everything the CFO and platform FinOps lead need in one place.
             </p>
           </div>
         </div>
+
+        <FinOpsGuide />
 
         {/* Row 1: Health + KPIs */}
         <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4 mb-4">

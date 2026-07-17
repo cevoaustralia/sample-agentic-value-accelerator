@@ -4,7 +4,11 @@ import { UserProvider } from './contexts/UserContext';
 import SignIn from './components/SignIn';
 import Sidebar from './components/Sidebar';
 import Home from './components/Home';
-import Strategy from './components/Strategy';
+import PlanLanding from './components/PlanLanding';
+import Prioritization from './components/Prioritization';
+import MaturityAssessment from './components/MaturityAssessment';
+import OperatingModel from './components/OperatingModel';
+import BusinessCases from './components/BusinessCases';
 import TemplateCatalog from './components/TemplateCatalog';
 import DeploymentList from './components/DeploymentList';
 import DeploymentCreate from './components/DeploymentCreate';
@@ -17,21 +21,29 @@ import RefImplDeployCreate from './components/RefImplDeployCreate';
 import Observability from './components/Observability';
 import Guardrails from './components/Guardrails';
 import Policy from './components/Policy';
+import ServiceOnboardingLanding from './components/service-onboarding/ServiceOnboardingLanding';
+import ServiceOnboardingFileViewer from './components/service-onboarding/ServiceOnboardingFileViewer';
 import AppFactory from './components/AppFactory';
 import ApplicationsLanding from './components/ApplicationsLanding';
 import AaaSLanding from './components/AaaSLanding';
 import AwsAgentsCatalog from './components/AwsAgentsCatalog';
 import CustomAgentsCatalog from './components/CustomAgentsCatalog';
 import AwsDevOpsAgent from './components/AwsDevOpsAgent';
+import AwsSecurityAgent from './components/AwsSecurityAgent';
 import CustomAgentCreate from './components/CustomAgentCreate';
 import Tools from './components/capabilities/Tools';
 import Knowledge from './components/capabilities/Knowledge';
 import Prompts from './components/capabilities/Prompts';
 import CapabilitiesLanding from './components/CapabilitiesLanding';
 import GovernLanding from './components/GovernLanding';
+import CommandCenter from './components/govern/CommandCenter';
+import TrustStackPage from './components/govern/TrustStackPage';
+import FleetOverview from './components/govern/FleetOverview';
 import ModelRegistry from './components/govern/ModelRegistry';
 import FinOps from './components/govern/FinOps';
 import AuditIncidents from './components/govern/AuditIncidents';
+import ComplianceCenter from './components/govern/ComplianceCenter';
+import RiskManagement from './components/govern/RiskManagement';
 import MyAgents from './components/MyAgents';
 import MyApps from './components/MyApps';
 
@@ -61,8 +73,11 @@ function AuthGate() {
         <div className="relative h-full">
           <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/accelerator-guide" element={<Strategy />} />
-        <Route path="/strategy" element={<Strategy />} />
+        <Route path="/plan" element={<PlanLanding />} />
+        <Route path="/use-cases" element={<Prioritization />} />
+        <Route path="/maturity-assessment" element={<MaturityAssessment />} />
+        <Route path="/operating-model" element={<OperatingModel />} />
+        <Route path="/business-cases" element={<BusinessCases />} />
         <Route path="/applications" element={<ApplicationsLanding />} />
         <Route path="/applications/fsi-foundry" element={<FSIFoundryCatalog />} />
         <Route path="/applications/reference-implementations" element={<ReferenceImplementations />} />
@@ -73,7 +88,7 @@ function AuthGate() {
         <Route path="/aaas" element={<AaaSLanding />} />
         <Route path="/aaas/aws-agents" element={<AwsAgentsCatalog />} />
         <Route path="/aaas/aws-agents/aws-devops" element={<AwsDevOpsAgent />} />
-        <Route path="/aaas/aws-agents/aws-security" element={<AwsAgentsCatalog />} />
+        <Route path="/aaas/aws-agents/aws-security" element={<AwsSecurityAgent />} />
         <Route path="/aaas/aws-agents/kiro" element={<AwsAgentsCatalog />} />
         <Route path="/aaas/custom" element={<CustomAgentsCatalog />} />
         <Route path="/aaas/custom/create" element={<CustomAgentCreate />} />
@@ -84,9 +99,14 @@ function AuthGate() {
         <Route path="/capabilities/tools" element={<Tools />} />
         <Route path="/capabilities/knowledge" element={<Knowledge />} />
         <Route path="/capabilities/prompts" element={<Prompts />} />
-        {/* Govern: single-page command center + 3 deep sub-pages */}
+        {/* Govern: hub landing + dedicated pages for each capability */}
         <Route path="/govern" element={<GovernLanding />} />
+        <Route path="/govern/command-center" element={<CommandCenter />} />
+        <Route path="/govern/trust-stack" element={<TrustStackPage />} />
+        <Route path="/govern/fleet" element={<FleetOverview />} />
         <Route path="/govern/models" element={<ModelRegistry />} />
+        <Route path="/govern/risk" element={<RiskManagement />} />
+        <Route path="/govern/compliance" element={<ComplianceCenter />} />
         <Route path="/govern/finops" element={<FinOps />} />
         <Route path="/govern/audit" element={<AuditIncidents />} />
         {/* Legacy redirects */}
@@ -95,6 +115,9 @@ function AuthGate() {
         <Route path="/applications/my-apps" element={<MyApps />} />
         <Route path="/templates" element={<TemplateCatalog />} />
         <Route path="/observability" element={<Observability />} />
+        <Route path="/secure/service-onboarding" element={<ServiceOnboardingLanding />} />
+        <Route path="/secure/service-onboarding/runs/:slug" element={<ServiceOnboardingLanding />} />
+        <Route path="/secure/service-onboarding/runs/:slug/files/:phase" element={<ServiceOnboardingFileViewer />} />
         <Route path="/secure/guardrails" element={<Guardrails initialTab="templates" />} />
         <Route path="/secure/guardrails/create" element={<Guardrails initialTab="builder" />} />
         <Route path="/secure/guardrails/observability" element={<Guardrails initialTab="observability" />} />
