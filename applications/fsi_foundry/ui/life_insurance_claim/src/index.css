@@ -1,0 +1,266 @@
+@import "tailwindcss";
+
+/* ── Claim Validation Theme Variables ── */
+:root {
+  --indigo-900: #312E81;
+  --indigo-800: #3730A3;
+  --indigo-700: #4338CA;
+  --indigo-600: #4F46E5;
+  --indigo-500: #6366F1;
+  --indigo-400: #818CF8;
+  --indigo-300: #A5B4FC;
+  --indigo-200: #C7D2FE;
+  --indigo-100: #E0E7FF;
+  --indigo-50: #EEF2FF;
+  --slate-800: #1E293B;
+  --slate-700: #334155;
+  --slate-600: #475569;
+  --slate-500: #64748B;
+  --slate-400: #94A3B8;
+  --slate-300: #CBD5E1;
+  --slate-200: #E2E8F0;
+  --slate-100: #F1F5F9;
+  --slate-50: #F8FAFC;
+  --green-700: #15803D;
+  --green-600: #16A34A;
+  --green-500: #22C55E;
+  --green-100: #DCFCE7;
+  --green-50: #F0FDF4;
+  --amber-700: #B45309;
+  --amber-600: #D97706;
+  --amber-500: #F59E0B;
+  --amber-100: #FEF3C7;
+  --amber-50: #FFFBEB;
+  --rose-700: #BE123C;
+  --rose-600: #E11D48;
+  --rose-500: #F43F5E;
+  --rose-100: #FFE4E6;
+  --rose-50: #FFF1F2;
+  --orange-600: #EA580C;
+  --orange-500: #F97316;
+  --orange-100: #FFEDD5;
+  --orange-50: #FFF7ED;
+
+  --accent: var(--indigo-600);
+  --accent-light: var(--indigo-500);
+  --accent-bg: var(--indigo-50);
+  --secondary: var(--green-600);
+  --secondary-light: var(--green-500);
+  --bg-primary: var(--slate-50);
+  --bg-card: #FFFFFF;
+  --text-primary: var(--slate-800);
+  --text-secondary: var(--slate-600);
+  --text-muted: var(--slate-500);
+}
+
+/* ── Base ── */
+body {
+  font-family: 'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  background-image:
+    radial-gradient(ellipse at 10% 0%, rgba(79,70,229,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 100%, rgba(22,163,74,0.03) 0%, transparent 50%);
+}
+
+/* ── Dashboard Heading ── */
+.heading-dash {
+  font-family: 'Inter', 'SF Pro Display', system-ui, sans-serif;
+  letter-spacing: -0.025em;
+  font-weight: 800;
+}
+
+/* ── Card ── */
+.card {
+  background: var(--bg-card);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow:
+    0 1px 3px rgba(0,0,0,0.04),
+    0 4px 16px rgba(0,0,0,0.04);
+  border: 1px solid rgba(0,0,0,0.04);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+.card:hover {
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.06),
+    0 8px 32px rgba(0,0,0,0.06);
+}
+
+/* ── Metric Card ── */
+.metric-card {
+  background: var(--bg-card);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+  border: 1px solid rgba(0,0,0,0.05);
+  position: relative;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.metric-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 24px rgba(79,70,229,0.12);
+}
+.metric-card-accent {
+  height: 4px;
+  width: 100%;
+}
+.metric-card-accent.go { background: linear-gradient(90deg, var(--green-600), var(--green-500)); }
+.metric-card-accent.refer { background: linear-gradient(90deg, var(--amber-600), var(--amber-500)); }
+.metric-card-accent.no-go { background: linear-gradient(90deg, var(--rose-600), var(--rose-500)); }
+.metric-card-accent.neutral { background: linear-gradient(90deg, var(--slate-500), var(--slate-400)); }
+
+/* ── Decision Badge ── */
+.decision-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.2rem;
+  border-radius: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: white;
+}
+.decision-badge.go { background: linear-gradient(135deg, var(--green-600), var(--green-500)); }
+.decision-badge.no_go { background: linear-gradient(135deg, var(--rose-600), var(--rose-500)); }
+.decision-badge.refer { background: linear-gradient(135deg, var(--amber-600), var(--amber-500)); }
+
+/* ── Status Badge ── */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.status-badge.pass { background: var(--green-50); color: var(--green-700); }
+.status-badge.fail { background: var(--rose-50); color: var(--rose-700); }
+.status-badge.warning { background: var(--amber-50); color: var(--amber-700); }
+
+/* ── Confidence Bar ── */
+.confidence-bar {
+  height: 8px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: var(--slate-100);
+}
+.confidence-bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 1s ease-out;
+}
+
+/* ── Pipeline Step ── */
+.pipeline-step {
+  border-left: 4px solid var(--slate-200);
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: var(--slate-50);
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+.pipeline-step.active { border-color: var(--indigo-500); background: var(--indigo-50); }
+.pipeline-step.done { border-color: var(--green-500); background: var(--green-50); }
+.pipeline-step.intake { border-color: var(--orange-500); }
+.pipeline-step.identity { border-color: var(--rose-500); }
+.pipeline-step.validity { border-color: var(--indigo-500); }
+.pipeline-step.synthesis { border-color: var(--green-600); }
+
+/* ── Risk Flag ── */
+.risk-flag {
+  background: var(--amber-50);
+  border-left: 4px solid var(--amber-500);
+  padding: 0.625rem 0.875rem;
+  margin: 0.375rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  font-size: 0.8125rem;
+}
+
+/* ── Agent Tag ── */
+.agent-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  border: 1px solid rgba(79,70,229,0.15);
+}
+.agent-tag.intake { background: var(--orange-50); color: var(--orange-600); border-color: rgba(249,115,22,0.15); }
+.agent-tag.identity { background: var(--rose-50); color: var(--rose-600); border-color: rgba(225,29,72,0.15); }
+.agent-tag.validity { background: var(--indigo-50); color: var(--indigo-600); border-color: rgba(79,70,229,0.15); }
+
+/* ── Radial Progress ── */
+.radial-progress {
+  --size: 72px;
+  --stroke: 6px;
+  width: var(--size);
+  height: var(--size);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.radial-progress svg {
+  transform: rotate(-90deg);
+  width: var(--size);
+  height: var(--size);
+}
+.radial-progress .track {
+  fill: none;
+  stroke: var(--slate-100);
+  stroke-width: var(--stroke);
+}
+.radial-progress .fill {
+  fill: none;
+  stroke: var(--indigo-600);
+  stroke-width: var(--stroke);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s ease-out;
+}
+.radial-progress .label {
+  position: absolute;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+/* ── Animations ── */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulseIndigo {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79,70,229,0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(79,70,229,0); }
+}
+@keyframes signalReveal {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fadeSlideUp {
+  animation: fadeSlideUp 0.6s ease-out both;
+}
+.animate-pulseIndigo {
+  animation: pulseIndigo 2s ease-in-out infinite;
+}
+.animate-signalReveal {
+  animation: signalReveal 0.5s ease-out both;
+}
+
+/* ── Utility ── */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+.stagger-6 { animation-delay: 0.6s; }
