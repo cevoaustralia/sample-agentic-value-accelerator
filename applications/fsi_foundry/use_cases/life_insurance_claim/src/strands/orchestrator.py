@@ -217,7 +217,7 @@ A false GO is far more costly than a false REFER."""
             intake_result, identity_result, validity_result
         )
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         summary = await loop.run_in_executor(
             None,
             lambda: self.synthesize({}, synthesis_prompt),
