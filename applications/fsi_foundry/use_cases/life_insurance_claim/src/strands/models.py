@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, Field
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +128,7 @@ class ClaimValidationResponse(BaseModel):
     """Response from the Life Insurance Claim Validation workflow."""
     claim_id: str = Field(..., description="Claim identifier")
     validation_id: str = Field(..., description="Unique validation run UUID")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Validation timestamp")
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Validation timestamp")
     decision: Decision = Field(default=Decision.REFER, description="Final claim decision: go, no_go, refer")
     confidence_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Overall decision confidence")
     document_intake: DocumentIntakeResult | None = Field(default=None, description="Document intake results")

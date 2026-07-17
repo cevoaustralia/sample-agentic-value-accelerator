@@ -14,7 +14,7 @@ Flow:
 import asyncio
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 from base.strands import StrandsOrchestrator
@@ -418,7 +418,7 @@ async def run_life_insurance_claim_validation(
     return ClaimValidationResponse(
         claim_id=request.claim_id,
         validation_id=str(uuid.uuid4()),
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         decision=decision,
         confidence_score=confidence_score,
         document_intake=document_intake,

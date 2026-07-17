@@ -6,7 +6,7 @@ from config.settings import Settings, get_regional_model_id
 class LifeInsuranceClaimSettings(Settings):
     """Settings specific to the life insurance claim validation use case."""
 
-    data_prefix: str = "samples/life-insurance-claim"
+    data_prefix: str = "samples/life_insurance_claim"
     _base_model: str = "anthropic.claude-sonnet-4-20250514-v1:0"
 
     # --- Model configuration per agent ---
