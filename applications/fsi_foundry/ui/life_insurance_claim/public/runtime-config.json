@@ -1,0 +1,41 @@
+{
+  "use_case_id": "life_insurance_claim",
+  "use_case_name": "Life Insurance Claim Validator",
+  "description": "AI-powered life insurance claim validation that analyzes identity documents, death certificates, and policy records to produce a GO / NO_GO / REFER decision on claim processing",
+  "domain": "Insurance",
+  "agents": [
+    {
+      "id": "document_intake",
+      "name": "Document Intake Agent",
+      "description": "Classifies submitted documents and extracts structured data using Amazon Textract OCR and Bedrock multimodal vision analysis"
+    },
+    {
+      "id": "identity_verification",
+      "name": "Identity Verification Agent",
+      "description": "Cross-references extracted identity data across all submitted documents to verify consistency and detect potential fraud indicators"
+    },
+    {
+      "id": "claim_validity",
+      "name": "Claim Validity Agent",
+      "description": "Validates policy status, confirms beneficiary entitlement, and verifies death certificate authenticity against extracted data"
+    }
+  ],
+  "api_endpoint": "/api/invoke",
+  "input_schema": {
+    "id_field": "claim_id",
+    "id_label": "Claim ID",
+    "id_placeholder": "e.g. CLAIM-LI-001",
+    "type_field": "validation_type",
+    "type_options": [
+      { "value": "full", "label": "Full Validation" },
+      { "value": "document_intake_only", "label": "Document Intake Only" },
+      { "value": "identity_only", "label": "Identity Only" },
+      { "value": "policy_only", "label": "Policy Only" }
+    ],
+    "test_entities": [
+      "CLAIM-LI-001",
+      "CLAIM-LI-002",
+      "CLAIM-LI-003"
+    ]
+  }
+}

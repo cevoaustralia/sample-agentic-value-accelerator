@@ -1,4 +1,0 @@
-streamlit==1.59.2
-boto3>=1.34.0
-Pillow>=10.0.0
-fpdf2>=2.8.0
