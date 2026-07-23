@@ -1,0 +1,73 @@
+{
+  "claim_id": "CLAIM-LI-001",
+  "claim_submission_date": "2026-06-15",
+  "claimant": {
+    "full_name": "Sarah Jane Mitchell",
+    "date_of_birth": "1982-03-14",
+    "address": "47 Harbour View Road, Mosman NSW 2088",
+    "phone": "+61 412 345 678",
+    "email": "sarah.mitchell@email.com.au",
+    "relationship_to_deceased": "spouse"
+  },
+  "deceased": {
+    "full_name": "David Robert Mitchell",
+    "date_of_birth": "1979-08-22",
+    "date_of_death": "2026-05-28",
+    "place_of_death": "Royal North Shore Hospital, St Leonards NSW",
+    "cause_of_death": "Acute myocardial infarction"
+  },
+  "policy": {
+    "policy_number": "LI-2019-004782",
+    "policy_holder_name": "David Robert Mitchell",
+    "product_type": "term_life",
+    "sum_insured": 1500000.00,
+    "premium_status": "paid_up",
+    "policy_start_date": "2019-02-01",
+    "policy_term_years": 20,
+    "policy_status": "active",
+    "beneficiaries": [
+      {
+        "name": "Sarah Jane Mitchell",
+        "relationship": "spouse",
+        "share_percentage": 100
+      }
+    ],
+    "exclusions": [
+      "Suicide within 13 months of policy commencement",
+      "Death resulting from criminal activity by the insured",
+      "Death while participating in professional motor racing"
+    ]
+  },
+  "documents": [
+    {
+      "document_name": "passport_sarah_mitchell.jpg",
+      "s3_key": "samples/life-insurance-claim/CLAIM-LI-001/documents/passport_sarah_mitchell.jpg",
+      "category": "identity_document",
+      "subtype": "passport",
+      "description": "Australian passport — claimant identity"
+    },
+    {
+      "document_name": "death_certificate_david_mitchell.pdf",
+      "s3_key": "samples/life-insurance-claim/CLAIM-LI-001/documents/death_certificate_david_mitchell.pdf",
+      "category": "death_certificate",
+      "subtype": "death_certificate",
+      "description": "NSW Registry of Births Deaths and Marriages — death certificate"
+    },
+    {
+      "document_name": "policy_schedule_LI-2019-004782.pdf",
+      "s3_key": "samples/life-insurance-claim/CLAIM-LI-001/documents/policy_schedule_LI-2019-004782.pdf",
+      "category": "policy_document",
+      "subtype": "policy_schedule",
+      "description": "Life insurance policy schedule showing coverage and beneficiary"
+    },
+    {
+      "document_name": "claim_form_signed.pdf",
+      "s3_key": "samples/life-insurance-claim/CLAIM-LI-001/documents/claim_form_signed.pdf",
+      "category": "claim_form",
+      "subtype": "claim_application",
+      "description": "Completed and signed claim application form"
+    }
+  ],
+  "expected_decision": "go",
+  "scenario_notes": "Valid claim — all documents consistent, policy active, claimant is sole beneficiary, death by natural causes well outside exclusion periods."
+}

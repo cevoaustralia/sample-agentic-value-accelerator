@@ -71,7 +71,6 @@ terraform.tfstate.d/
 .scan_reports/
 **/.scan_reports/
 .hypothesis/
-.kiro/
 .tests/
 .worktrees/
 

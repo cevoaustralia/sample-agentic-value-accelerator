@@ -1,0 +1,75 @@
+{
+  "claim_id": "CLAIM-LI-003",
+  "claim_submission_date": "2026-07-08",
+  "claimant": {
+    "full_name": "Jennifer Kate Walsh",
+    "date_of_birth": "1990-01-25",
+    "address": "88 Creek Road, Mount Gravatt QLD 4122",
+    "phone": "+61 478 111 222",
+    "email": "jen.walsh90@outlook.com",
+    "relationship_to_deceased": "spouse"
+  },
+  "deceased": {
+    "full_name": "Andrew Peter Walsh",
+    "date_of_birth": "1988-12-03",
+    "date_of_death": "2026-06-20",
+    "place_of_death": "Residence — 88 Creek Road, Mount Gravatt QLD 4122",
+    "cause_of_death": "Hanging (suicide)"
+  },
+  "policy": {
+    "policy_number": "LI-2025-009876",
+    "policy_holder_name": "Andrew Peter Walsh",
+    "product_type": "term_life",
+    "sum_insured": 2000000.00,
+    "premium_status": "lapsed",
+    "policy_start_date": "2025-11-01",
+    "policy_term_years": 30,
+    "policy_status": "lapsed",
+    "last_premium_paid_date": "2026-03-01",
+    "lapse_date": "2026-04-15",
+    "beneficiaries": [
+      {
+        "name": "Jennifer Kate Walsh",
+        "relationship": "spouse",
+        "share_percentage": 100
+      }
+    ],
+    "exclusions": [
+      "Suicide within 13 months of policy commencement",
+      "Death resulting from criminal activity by the insured",
+      "Death while under the influence of non-prescribed controlled substances"
+    ]
+  },
+  "documents": [
+    {
+      "document_name": "drivers_licence_jennifer_walsh.jpg",
+      "s3_key": "samples/life-insurance-claim/CLAIM-LI-003/documents/drivers_licence_jennifer_walsh.jpg",
+      "category": "identity_document",
+      "subtype": "drivers_licence",
+      "description": "QLD driver's licence — claimant identity"
+    },
+    {
+      "document_name": "death_certificate_andrew_walsh.pdf",
+      "s3_key": "samples/life-insurance-claim/CLAIM-LI-003/documents/death_certificate_andrew_walsh.pdf",
+      "category": "death_certificate",
+      "subtype": "death_certificate",
+      "description": "QLD Registry — death certificate"
+    },
+    {
+      "document_name": "policy_schedule_LI-2025-009876.pdf",
+      "s3_key": "samples/life-insurance-claim/CLAIM-LI-003/documents/policy_schedule_LI-2025-009876.pdf",
+      "category": "policy_document",
+      "subtype": "policy_schedule",
+      "description": "Term life policy schedule"
+    },
+    {
+      "document_name": "claim_form_jennifer.pdf",
+      "s3_key": "samples/life-insurance-claim/CLAIM-LI-003/documents/claim_form_jennifer.pdf",
+      "category": "claim_form",
+      "subtype": "claim_application",
+      "description": "Claim application form"
+    }
+  ],
+  "expected_decision": "no_go",
+  "scenario_notes": "Two grounds for rejection: (1) Policy lapsed on 2026-04-15 — premiums unpaid since March, death occurred 2026-06-20 when policy was not in force. (2) Even if policy were active, suicide exclusion applies — policy commenced 2025-11-01 and death by suicide occurred within 13 months (only ~8 months after commencement)."
+}

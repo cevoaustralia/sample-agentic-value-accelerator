@@ -1,0 +1,21 @@
+# Virtual environments
+.venv/
+infra/.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# CDK
+infra/cdk.out/
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Temporary
+/tmp/

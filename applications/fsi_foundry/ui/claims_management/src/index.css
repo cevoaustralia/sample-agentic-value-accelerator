@@ -2,12 +2,12 @@
 
 /* ── Claims Center Theme Variables ── */
 :root {
-  --sky-700: #0284C7;
-  --sky-600: #0284C7;
-  --sky-500: #38BDF8;
-  --sky-400: #38BDF8;
-  --sky-100: #E0F2FE;
-  --sky-50: #F0F9FF;
+  --sky-700: #FF8F00;
+  --sky-600: #FF8F00;
+  --sky-500: #F05A2A;
+  --sky-400: #F05A2A;
+  --sky-100: #FFF3E0;
+  --sky-50: #FFF8F0;
   --warm-white: #FFFBF5;
   --charcoal: #292524;
   --stone-700: #44403C;
@@ -18,10 +18,10 @@
   --stone-200: #E7E5E4;
   --stone-100: #F5F5F4;
   --stone-50: #FAFAF9;
-  --coral-600: #EA580C;
-  --coral-500: #F97316;
-  --coral-100: #FFEDD5;
-  --coral-50: #FFF7ED;
+  --coral-600: #D3145A;
+  --coral-500: #D3145A;
+  --coral-100: #FCE4EC;
+  --coral-50: #FFF0F3;
   --green-700: #15803D;
   --green-600: #16A34A;
   --green-500: #22C55E;
@@ -54,8 +54,8 @@ body {
   color: var(--text-primary);
   background: var(--bg-primary);
   background-image:
-    radial-gradient(ellipse at 10% 0%, rgba(2,132,199,0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 90% 100%, rgba(249,115,22,0.03) 0%, transparent 50%);
+    radial-gradient(ellipse at 10% 0%, rgba(255,143,0,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 100%, rgba(114,4,185,0.03) 0%, transparent 50%);
 }
 
 /* ── Dashboard Heading ── */
@@ -94,7 +94,7 @@ body {
 }
 .metric-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 6px 24px rgba(2,132,199,0.12);
+  box-shadow: 0 6px 24px rgba(255,143,0,0.12);
 }
 .metric-card-accent {
   height: 4px;
@@ -182,7 +182,7 @@ body {
   font-weight: 600;
   background: var(--sky-50);
   color: var(--sky-700);
-  border: 1px solid rgba(2,132,199,0.15);
+  border: 1px solid rgba(255,143,0,0.15);
 }
 
 /* ── Detail Tag ── */
@@ -359,8 +359,8 @@ body {
   66% { transform: translateY(-3px) rotate(-0.3deg); }
 }
 @keyframes pulseSky {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(2,132,199,0.3); }
-  50% { box-shadow: 0 0 0 8px rgba(2,132,199,0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,143,0,0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(255,143,0,0); }
 }
 
 .animate-fadeSlideUp {
