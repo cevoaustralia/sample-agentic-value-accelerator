@@ -62,10 +62,10 @@ function UploadBox({ label, icon, file, onFileChange }: { label: string; icon: s
 
   return (
     <div
-      className="border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-200 hover:border-indigo-400 hover:bg-indigo-50/30"
+      className="border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-200"
       style={{
-        borderColor: file ? 'var(--indigo-500)' : '#CBD5E1',
-        background: file ? 'var(--indigo-50)' : 'white',
+        borderColor: file ? 'var(--accent)' : '#e5e7eb',
+        background: file ? 'rgba(255,143,0,0.04)' : 'white',
         borderStyle: file ? 'solid' : 'dashed',
       }}
       onClick={() => inputRef.current?.click()}
@@ -73,7 +73,7 @@ function UploadBox({ label, icon, file, onFileChange }: { label: string; icon: s
       <div className="text-2xl mb-2">{icon}</div>
       <div className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>{label}</div>
       {file && (
-        <div className="text-xs font-bold mt-1" style={{ color: 'var(--indigo-600)' }}>{file.name}</div>
+        <div className="text-xs font-bold mt-1" style={{ color: 'var(--accent)' }}>{file.name}</div>
       )}
       <input
         ref={inputRef}
@@ -154,8 +154,8 @@ export default function AgentConsole({ config }: Props) {
             onClick={() => setTabMode('sample')}
             className="px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-all duration-200"
             style={{
-              borderColor: tabMode === 'sample' ? 'transparent' : '#E2E8F0',
-              background: tabMode === 'sample' ? 'linear-gradient(135deg, #3730A3, #4F46E5)' : 'white',
+              borderColor: tabMode === 'sample' ? 'transparent' : 'var(--border)',
+              background: tabMode === 'sample' ? 'linear-gradient(135deg, #FF8F00, #F05A2A)' : 'white',
               color: tabMode === 'sample' ? 'white' : 'var(--text-secondary)',
             }}
           >
@@ -165,8 +165,8 @@ export default function AgentConsole({ config }: Props) {
             onClick={() => setTabMode('upload')}
             className="px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-all duration-200"
             style={{
-              borderColor: tabMode === 'upload' ? 'transparent' : '#E2E8F0',
-              background: tabMode === 'upload' ? 'linear-gradient(135deg, #3730A3, #4F46E5)' : 'white',
+              borderColor: tabMode === 'upload' ? 'transparent' : 'var(--border)',
+              background: tabMode === 'upload' ? 'linear-gradient(135deg, #FF8F00, #F05A2A)' : 'white',
               color: tabMode === 'upload' ? 'white' : 'var(--text-secondary)',
             }}
           >
@@ -189,8 +189,9 @@ export default function AgentConsole({ config }: Props) {
                 placeholder={input_schema.id_placeholder}
                 className="w-full px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all duration-200 outline-none"
                 style={{
-                  borderColor: claimId ? 'var(--indigo-500)' : '#E2E8F0',
-                  background: claimId ? 'var(--indigo-50)' : 'white',
+                  borderColor: claimId ? 'var(--accent)' : 'var(--border)',
+                  background: claimId ? 'rgba(255,143,0,0.04)' : 'white',
+                  boxShadow: claimId ? '0 0 0 3px rgba(255,143,0,0.08)' : 'none',
                 }}
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
               />
@@ -200,7 +201,7 @@ export default function AgentConsole({ config }: Props) {
                   {input_schema.test_entities.map((id) => (
                     <button key={id} onClick={() => setClaimId(id)}
                       className="text-xs font-bold px-2.5 py-1 rounded-lg transition-colors hover:opacity-80"
-                      style={{ background: 'var(--indigo-50)', color: 'var(--indigo-800)' }}>
+                      style={{ background: 'rgba(255,143,0,0.08)', color: 'var(--accent)' }}>
                       {id}
                     </button>
                   ))}
@@ -211,22 +212,22 @@ export default function AgentConsole({ config }: Props) {
             {/* Claim Details Preview */}
             {selectedClaim && (
               <div className="mb-6 grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="p-3 rounded-xl" style={{ background: 'var(--orange-50)', borderLeft: '3px solid var(--orange-500)' }}>
-                  <div className="text-xs font-bold uppercase mb-1" style={{ color: 'var(--orange-600)' }}>Claimant</div>
+                <div className="p-3 rounded-xl" style={{ background: 'rgba(255,143,0,0.04)', borderLeft: '3px solid #FF8F00' }}>
+                  <div className="text-xs font-bold uppercase mb-1" style={{ color: '#FF8F00' }}>Claimant</div>
                   <div className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{selectedClaim.claimant}</div>
                 </div>
-                <div className="p-3 rounded-xl" style={{ background: 'var(--rose-50)', borderLeft: '3px solid var(--rose-500)' }}>
-                  <div className="text-xs font-bold uppercase mb-1" style={{ color: 'var(--rose-600)' }}>Deceased</div>
+                <div className="p-3 rounded-xl" style={{ background: 'rgba(211,20,90,0.04)', borderLeft: '3px solid #D3145A' }}>
+                  <div className="text-xs font-bold uppercase mb-1" style={{ color: '#D3145A' }}>Deceased</div>
                   <div className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{selectedClaim.deceased}</div>
                   <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{selectedClaim.dateOfDeath}</div>
                 </div>
-                <div className="p-3 rounded-xl" style={{ background: 'var(--indigo-50)', borderLeft: '3px solid var(--indigo-500)' }}>
-                  <div className="text-xs font-bold uppercase mb-1" style={{ color: 'var(--indigo-600)' }}>Policy</div>
+                <div className="p-3 rounded-xl" style={{ background: 'rgba(114,4,185,0.04)', borderLeft: '3px solid #7204B9' }}>
+                  <div className="text-xs font-bold uppercase mb-1" style={{ color: '#7204B9' }}>Policy</div>
                   <div className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{selectedClaim.policyNumber}</div>
                   <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{selectedClaim.policyStatus} · {selectedClaim.sumInsured}</div>
                 </div>
-                <div className="p-3 rounded-xl" style={{ background: 'var(--green-50)', borderLeft: '3px solid var(--green-500)' }}>
-                  <div className="text-xs font-bold uppercase mb-1" style={{ color: 'var(--green-700)' }}>Documents ({selectedClaim.documents.length})</div>
+                <div className="p-3 rounded-xl" style={{ background: 'rgba(5,150,105,0.04)', borderLeft: '3px solid var(--approve)' }}>
+                  <div className="text-xs font-bold uppercase mb-1" style={{ color: 'var(--approve)' }}>Documents ({selectedClaim.documents.length})</div>
                   {selectedClaim.documents.map((d, i) => (
                     <div key={i} className="text-xs" style={{ color: 'var(--text-secondary)' }}>📄 {d}</div>
                   ))}
@@ -289,12 +290,12 @@ export default function AgentConsole({ config }: Props) {
                   onClick={() => setValidationType(opt.value)}
                   className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer"
                   style={{
-                    borderColor: selected ? 'var(--indigo-600)' : '#E2E8F0',
-                    background: selected ? 'var(--indigo-50)' : 'white',
+                    borderColor: selected ? 'var(--accent)' : 'var(--border)',
+                    background: selected ? 'rgba(255,143,0,0.06)' : 'white',
                     transform: selected ? 'scale(1.02)' : 'scale(1)',
                   }}
                 >
-                  <span className="text-xs font-bold" style={{ color: selected ? 'var(--indigo-800)' : 'var(--text-secondary)' }}>
+                  <span className="text-xs font-bold" style={{ color: selected ? 'var(--accent)' : 'var(--text-secondary)' }}>
                     {opt.label}
                   </span>
                 </button>
@@ -308,7 +309,7 @@ export default function AgentConsole({ config }: Props) {
           onClick={handleSubmit}
           disabled={(tabMode === 'sample' && !claimId.trim()) || (tabMode === 'upload' && !hasUploadedFiles) || status === 'running'}
           className="w-full py-3.5 rounded-xl text-sm font-bold text-white transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99]"
-          style={{ background: 'linear-gradient(135deg, #3730A3, #4F46E5)' }}
+          style={{ background: 'linear-gradient(135deg, #FF8F00, #F05A2A)', boxShadow: '0 4px 14px rgba(255,143,0,0.3)' }}
         >
           {status === 'running' ? (
             <span className="flex items-center justify-center gap-2">
@@ -339,14 +340,14 @@ export default function AgentConsole({ config }: Props) {
                 <div className="flex flex-col items-center">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500 ${
-                      activeStep > i ? 'text-white' : activeStep === i ? 'text-white animate-pulseIndigo' : 'text-gray-400'
+                      activeStep > i ? 'text-white' : activeStep === i ? 'text-white animate-glowPulse' : 'text-gray-400'
                     }`}
                     style={{
                       background: activeStep > i
-                        ? 'var(--green-600)'
+                        ? 'var(--approve)'
                         : activeStep === i
-                          ? 'linear-gradient(135deg, #3730A3, #4F46E5)'
-                          : '#F1F5F9',
+                          ? 'linear-gradient(135deg, #FF8F00, #F05A2A)'
+                          : '#f3f4f6',
                     }}
                   >
                     {activeStep > i ? (
@@ -364,7 +365,7 @@ export default function AgentConsole({ config }: Props) {
                 {i < flowLabels.length - 1 && (
                   <div className="flex-1 h-1 rounded-full mx-2 mt-[-20px]"
                     style={{
-                      background: activeStep > i ? 'var(--green-600)' : '#E2E8F0',
+                      background: activeStep > i ? 'var(--approve)' : 'var(--border)',
                       transition: 'background 0.5s ease',
                     }} />
                 )}
@@ -375,20 +376,20 @@ export default function AgentConsole({ config }: Props) {
           {/* Agent Status Cards */}
           <div className="grid grid-cols-3 gap-3">
             {config.agents.map((agent, i) => {
-              const agentColors = ['#F97316', '#E11D48', '#4F46E5'];
+              const agentColors = ['#FF8F00', '#D3145A', '#7204B9'];
               const isActive = activeStep === i;
               const isDone = activeStep > i;
               return (
                 <div key={agent.id}
                   className="p-3 rounded-xl border transition-all duration-300"
                   style={{
-                    borderColor: isActive ? agentColors[i] : isDone ? 'var(--green-600)' : '#E2E8F0',
-                    background: isActive ? `${agentColors[i]}08` : isDone ? 'var(--green-50)' : 'white',
+                    borderColor: isActive ? agentColors[i] : isDone ? 'var(--approve)' : 'var(--border)',
+                    background: isActive ? `${agentColors[i]}08` : isDone ? 'rgba(5,150,105,0.04)' : 'white',
                   }}>
                   <div className="flex items-center gap-2 mb-2">
                     {isDone ? (
-                      <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'var(--green-50)' }}>
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--green-600)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'rgba(5,150,105,0.08)' }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--approve)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                       </div>
@@ -398,11 +399,11 @@ export default function AgentConsole({ config }: Props) {
                         <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: agentColors[i] }} />
                       </div>
                     ) : (
-                      <div className="w-5 h-5 rounded-full" style={{ background: 'var(--slate-100)' }} />
+                      <div className="w-5 h-5 rounded-full" style={{ background: '#f3f4f6' }} />
                     )}
                     <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{agent.name}</span>
                   </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--slate-100)' }}>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#f3f4f6' }}>
                     <div
                       className="h-full rounded-full transition-all duration-1000"
                       style={{
@@ -420,18 +421,18 @@ export default function AgentConsole({ config }: Props) {
 
       {/* ── Error ── */}
       {status === 'error' && error && (
-        <div className="card animate-fadeSlideUp" style={{ borderLeft: '4px solid var(--rose-600)' }}>
+        <div className="card animate-fadeSlideUp" style={{ borderLeft: '4px solid var(--reject)' }}>
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--rose-50)' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--rose-600)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(220,38,38,0.06)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--reject)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="15" y1="9" x2="9" y2="15" />
                 <line x1="9" y1="9" x2="15" y2="15" />
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-bold mb-1" style={{ color: 'var(--rose-600)' }}>Validation Error</h3>
-              <p className="text-xs" style={{ color: 'var(--rose-500)' }}>{error}</p>
+              <h3 className="text-sm font-bold mb-1" style={{ color: 'var(--reject)' }}>Validation Error</h3>
+              <p className="text-xs" style={{ color: 'var(--reject)' }}>{error}</p>
             </div>
           </div>
         </div>

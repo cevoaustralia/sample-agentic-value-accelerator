@@ -6,7 +6,7 @@ interface Props {
 }
 
 /* ── Helper: Radial progress circle ── */
-function RadialProgress({ value, size = 72, stroke = 6, color = '#4F46E5' }: { value: number; size?: number; stroke?: number; color?: string }) {
+function RadialProgress({ value, size = 72, stroke = 6, color = '#FF8F00' }: { value: number; size?: number; stroke?: number; color?: string }) {
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (value / 100) * circumference;
@@ -29,7 +29,7 @@ function VerificationMetric({ label, passed, icon }: { label: string; passed: bo
       <div className={`metric-card-accent ${passed ? 'go' : 'no-go'}`} />
       <div className="p-4 text-center">
         <div className="text-2xl mb-1">{icon}</div>
-        <div className={`text-2xl font-extrabold ${passed ? 'text-green-600' : 'text-rose-600'}`}>
+        <div className={`text-2xl font-extrabold ${passed ? 'text-green-600' : 'text-red-600'}`}>
           {passed ? '✓' : '✗'}
         </div>
         <div className="text-xs font-semibold mt-1" style={{ color: 'var(--text-muted)' }}>{label}</div>
@@ -42,7 +42,7 @@ export default function ResultsPanel({ result }: Props) {
   const [rawExpanded, setRawExpanded] = useState(false);
 
   const confidencePct = Math.round(result.confidence_score * 100);
-  const confidenceColor = confidencePct >= 80 ? '#16A34A' : confidencePct >= 60 ? '#F59E0B' : '#E11D48';
+  const confidenceColor = confidencePct >= 80 ? 'var(--approve)' : confidencePct >= 60 ? 'var(--escalate)' : 'var(--reject)';
 
   const decisionLabel = {
     go: '✅ GO — Approve Claim',
@@ -54,7 +54,7 @@ export default function ResultsPanel({ result }: Props) {
     <div className="space-y-6 animate-fadeSlideUp">
 
       {/* ── Decision Header ── */}
-      <div className="card" style={{ borderTop: `4px solid ${result.decision === 'go' ? '#16A34A' : result.decision === 'no_go' ? '#E11D48' : '#F59E0B'}` }}>
+      <div className="card" style={{ borderTop: `4px solid ${result.decision === 'go' ? 'var(--approve)' : result.decision === 'no_go' ? 'var(--reject)' : 'var(--escalate)'}` }}>
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h2 className="text-lg font-extrabold heading-dash" style={{ color: 'var(--text-primary)' }}>Validation Result</h2>
@@ -100,7 +100,7 @@ export default function ResultsPanel({ result }: Props) {
       {/* ── Risk Flags ── */}
       {result.risk_flags.length > 0 && (
         <div className="card animate-fadeSlideUp stagger-2">
-          <h3 className="text-sm font-extrabold mb-3 flex items-center gap-2" style={{ color: 'var(--amber-700)' }}>
+          <h3 className="text-sm font-extrabold mb-3 flex items-center gap-2" style={{ color: 'var(--escalate)' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
               <line x1="12" y1="9" x2="12" y2="13" />
@@ -119,9 +119,9 @@ export default function ResultsPanel({ result }: Props) {
       )}
 
       {/* ── Explanation ── */}
-      <div className="card animate-fadeSlideUp stagger-3" style={{ borderLeft: '4px solid var(--indigo-600)' }}>
+      <div className="card animate-fadeSlideUp stagger-3" style={{ borderLeft: '4px solid var(--accent)' }}>
         <h3 className="text-sm font-extrabold mb-2 flex items-center gap-2 heading-dash" style={{ color: 'var(--text-primary)' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--indigo-600)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 6h16M4 12h16M4 18h7" />
           </svg>
           Decision Explanation
@@ -153,7 +153,7 @@ export default function ResultsPanel({ result }: Props) {
           </button>
           {rawExpanded && (
             <pre className="mt-4 p-4 rounded-xl text-xs overflow-x-auto"
-              style={{ background: 'var(--slate-50)', color: 'var(--text-secondary)', fontFamily: 'ui-monospace, monospace' }}>
+              style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontFamily: 'ui-monospace, monospace' }}>
               {JSON.stringify(result.raw_analysis, null, 2)}
             </pre>
           )}
