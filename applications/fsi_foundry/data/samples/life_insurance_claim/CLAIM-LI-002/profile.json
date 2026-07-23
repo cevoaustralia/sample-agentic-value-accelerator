@@ -1,0 +1,77 @@
+{
+  "claim_id": "CLAIM-LI-002",
+  "claim_submission_date": "2026-07-02",
+  "claimant": {
+    "full_name": "Michael James Thompson",
+    "date_of_birth": "1975-11-30",
+    "address": "12 Banksia Avenue, Epping VIC 3076",
+    "phone": "+61 403 987 654",
+    "email": "m.thompson75@gmail.com",
+    "relationship_to_deceased": "son"
+  },
+  "deceased": {
+    "full_name": "Margaret Anne Thomson",
+    "date_of_birth": "1948-06-17",
+    "date_of_death": "2026-06-10",
+    "place_of_death": "Eastern Health Box Hill Hospital, Box Hill VIC",
+    "cause_of_death": "Metastatic breast cancer"
+  },
+  "policy": {
+    "policy_number": "LI-2015-002341",
+    "policy_holder_name": "Margaret Anne Thomson",
+    "product_type": "whole_life",
+    "sum_insured": 500000.00,
+    "premium_status": "paid_up",
+    "policy_start_date": "2015-09-15",
+    "policy_term_years": null,
+    "policy_status": "active",
+    "beneficiaries": [
+      {
+        "name": "Michael James Thomson",
+        "relationship": "son",
+        "share_percentage": 50
+      },
+      {
+        "name": "Rebecca Louise Thomson",
+        "relationship": "daughter",
+        "share_percentage": 50
+      }
+    ],
+    "exclusions": [
+      "Suicide within 13 months of policy commencement",
+      "Death resulting from criminal activity by the insured"
+    ]
+  },
+  "documents": [
+    {
+      "document_name": "drivers_licence_michael_thompson.jpg",
+      "s3_key": "samples/life-insurance-claim/CLAIM-LI-002/documents/drivers_licence_michael_thompson.jpg",
+      "category": "identity_document",
+      "subtype": "drivers_licence",
+      "description": "Victorian driver's licence — claimant identity"
+    },
+    {
+      "document_name": "death_certificate_margaret_thomson.pdf",
+      "s3_key": "samples/life-insurance-claim/CLAIM-LI-002/documents/death_certificate_margaret_thomson.pdf",
+      "category": "death_certificate",
+      "subtype": "death_certificate",
+      "description": "VIC Registry — death certificate"
+    },
+    {
+      "document_name": "policy_document_LI-2015-002341.pdf",
+      "s3_key": "samples/life-insurance-claim/CLAIM-LI-002/documents/policy_document_LI-2015-002341.pdf",
+      "category": "policy_document",
+      "subtype": "policy_schedule",
+      "description": "Whole life policy document"
+    },
+    {
+      "document_name": "claim_form_michael.pdf",
+      "s3_key": "samples/life-insurance-claim/CLAIM-LI-002/documents/claim_form_michael.pdf",
+      "category": "claim_form",
+      "subtype": "claim_application",
+      "description": "Claim application form"
+    }
+  ],
+  "expected_decision": "refer",
+  "scenario_notes": "Name mismatch — claimant surname is 'Thompson' (with p) on driver's licence but 'Thomson' (no p) on policy beneficiary list. Likely a spelling variant but requires human verification. Also claimant is only entitled to 50% share."
+}
