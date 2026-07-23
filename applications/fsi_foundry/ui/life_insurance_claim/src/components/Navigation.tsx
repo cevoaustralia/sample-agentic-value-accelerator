@@ -27,7 +27,7 @@ export default function Navigation({ config }: Props) {
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className="text-lg font-extrabold tracking-tight text-white">AVA</span>
-            <span className="text-lg font-semibold" style={{ color: '#A5B4FC' }}>Claim Validator</span>
+            <span className="text-lg font-semibold" style={{ color: '#A5B4FC' }}>Life Insurance Claim Validator</span>
           </div>
         </Link>
 
