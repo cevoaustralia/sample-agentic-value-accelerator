@@ -14,20 +14,14 @@ export default function Navigation({ config }: Props) {
   ];
 
   return (
-    <nav className="sticky top-0 z-50 backdrop-blur-md border-b"
-      style={{ background: 'rgba(49,46,129,0.97)', borderColor: 'rgba(79,70,229,0.3)', boxShadow: '0 2px 16px rgba(0,0,0,0.2)' }}>
+    <nav className="sticky top-0 z-50 border-b"
+      style={{ background: 'var(--bg-primary)', borderColor: 'var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 group">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #4F46E5, #6366F1)' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
+          <img src="/cevo-logo.png" alt="Cevo" className="h-8 w-auto object-contain" style={{ maxHeight: '32px' }} />
           <div className="flex items-baseline gap-1.5">
-            <span className="text-lg font-extrabold tracking-tight text-white">AVA</span>
-            <span className="text-lg font-semibold" style={{ color: '#A5B4FC' }}>Life Insurance Claim Validator</span>
+            <span className="text-lg font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>Claim Validator</span>
           </div>
         </Link>
 
@@ -39,12 +33,11 @@ export default function Navigation({ config }: Props) {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                  active
-                    ? 'text-white'
-                    : 'text-indigo-200 hover:text-white hover:bg-white/5'
-                }`}
-                style={active ? { background: 'linear-gradient(135deg, #4F46E5, #6366F1)' } : undefined}
+                className="px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
+                style={active
+                  ? { background: 'rgba(255, 143, 0, 0.08)', color: 'var(--accent)' }
+                  : { color: 'var(--text-secondary)' }
+                }
               >
                 {link.label}
               </Link>
@@ -55,13 +48,13 @@ export default function Navigation({ config }: Props) {
         {/* Domain badge */}
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold px-2.5 py-1 rounded-full"
-            style={{ background: 'rgba(79,70,229,0.2)', color: '#A5B4FC' }}>
+            style={{ background: 'rgba(255, 143, 0, 0.08)', color: 'var(--accent)', border: '1px solid rgba(255, 143, 0, 0.25)' }}>
             {config.domain}
           </span>
         </div>
       </div>
       {/* Accent line */}
-      <div className="h-0.5" style={{ background: 'linear-gradient(90deg, #4338CA, #6366F1, #16A34A, #F59E0B)' }} />
+      <div className="h-0.5" style={{ background: 'linear-gradient(90deg, #FF8F00, #F05A2A, #D3145A, #7204B9, #191970)' }} />
     </nav>
   );
 }

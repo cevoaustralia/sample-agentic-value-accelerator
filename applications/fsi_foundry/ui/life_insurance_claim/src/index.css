@@ -1,56 +1,32 @@
 @import "tailwindcss";
 
-/* ── Claim Validation Theme Variables ── */
+/* ── Cevo Light Mode Theme — Life Insurance Claim Validator ── */
 :root {
-  --indigo-900: #312E81;
-  --indigo-800: #3730A3;
-  --indigo-700: #4338CA;
-  --indigo-600: #4F46E5;
-  --indigo-500: #6366F1;
-  --indigo-400: #818CF8;
-  --indigo-300: #A5B4FC;
-  --indigo-200: #C7D2FE;
-  --indigo-100: #E0E7FF;
-  --indigo-50: #EEF2FF;
-  --slate-800: #1E293B;
-  --slate-700: #334155;
-  --slate-600: #475569;
-  --slate-500: #64748B;
-  --slate-400: #94A3B8;
-  --slate-300: #CBD5E1;
-  --slate-200: #E2E8F0;
-  --slate-100: #F1F5F9;
-  --slate-50: #F8FAFC;
-  --green-700: #15803D;
-  --green-600: #16A34A;
-  --green-500: #22C55E;
-  --green-100: #DCFCE7;
-  --green-50: #F0FDF4;
-  --amber-700: #B45309;
-  --amber-600: #D97706;
-  --amber-500: #F59E0B;
-  --amber-100: #FEF3C7;
-  --amber-50: #FFFBEB;
-  --rose-700: #BE123C;
-  --rose-600: #E11D48;
-  --rose-500: #F43F5E;
-  --rose-100: #FFE4E6;
-  --rose-50: #FFF1F2;
-  --orange-600: #EA580C;
-  --orange-500: #F97316;
-  --orange-100: #FFEDD5;
-  --orange-50: #FFF7ED;
-
-  --accent: var(--indigo-600);
-  --accent-light: var(--indigo-500);
-  --accent-bg: var(--indigo-50);
-  --secondary: var(--green-600);
-  --secondary-light: var(--green-500);
-  --bg-primary: var(--slate-50);
-  --bg-card: #FFFFFF;
-  --text-primary: var(--slate-800);
-  --text-secondary: var(--slate-600);
-  --text-muted: var(--slate-500);
+  --accent: #FF8F00;
+  --accent-dim: #F05A2A;
+  --accent-glow: rgba(255, 143, 0, 0.2);
+  --accent-pink: #D3145A;
+  --accent-purple: #7204B9;
+  --accent-blue: #191970;
+  --risk-low: #059669;
+  --risk-medium: #d97706;
+  --risk-high: #dc2626;
+  --risk-critical: #b91c1c;
+  --status-compliant: #059669;
+  --status-non-compliant: #dc2626;
+  --status-review: #d97706;
+  --approve: #059669;
+  --reject: #dc2626;
+  --escalate: #d97706;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-card: #ffffff;
+  --bg-card-hover: #fafafa;
+  --border: #e5e7eb;
+  --border-glow: rgba(255, 143, 0, 0.2);
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
 }
 
 /* ── Base ── */
@@ -59,8 +35,9 @@ body {
   color: var(--text-primary);
   background: var(--bg-primary);
   background-image:
-    radial-gradient(ellipse at 10% 0%, rgba(79,70,229,0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 90% 100%, rgba(22,163,74,0.03) 0%, transparent 50%);
+    radial-gradient(ellipse at 10% 0%, rgba(255,143,0,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 100%, rgba(114,4,185,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(240,90,42,0.04) 0%, transparent 60%);
 }
 
 /* ── Dashboard Heading ── */
@@ -70,21 +47,28 @@ body {
   font-weight: 800;
 }
 
+/* ── Gradient Text ── */
+.gradient-text {
+  background: linear-gradient(135deg, #FF8F00 0%, #191970 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 /* ── Card ── */
 .card {
   background: var(--bg-card);
-  border-radius: 1rem;
+  border-radius: 12px;
   padding: 1.5rem;
-  box-shadow:
-    0 1px 3px rgba(0,0,0,0.04),
-    0 4px 16px rgba(0,0,0,0.04);
-  border: 1px solid rgba(0,0,0,0.04);
-  transition: box-shadow 0.25s ease, transform 0.25s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  border: 1px solid var(--border);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
 }
 .card:hover {
+  border-color: rgba(255, 143, 0, 0.3);
   box-shadow:
-    0 2px 8px rgba(0,0,0,0.06),
-    0 8px 32px rgba(0,0,0,0.06);
+    0 2px 8px rgba(255, 143, 0, 0.06),
+    0 8px 32px rgba(0,0,0,0.04);
 }
 
 /* ── Metric Card ── */
@@ -92,23 +76,24 @@ body {
   background: var(--bg-card);
   border-radius: 0.75rem;
   overflow: hidden;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.05);
-  border: 1px solid rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  border: 1px solid var(--border);
   position: relative;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 .metric-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 6px 24px rgba(79,70,229,0.12);
+  border-color: rgba(255, 143, 0, 0.3);
+  box-shadow: 0 6px 24px rgba(255,143,0,0.1);
 }
 .metric-card-accent {
   height: 4px;
   width: 100%;
 }
-.metric-card-accent.go { background: linear-gradient(90deg, var(--green-600), var(--green-500)); }
-.metric-card-accent.refer { background: linear-gradient(90deg, var(--amber-600), var(--amber-500)); }
-.metric-card-accent.no-go { background: linear-gradient(90deg, var(--rose-600), var(--rose-500)); }
-.metric-card-accent.neutral { background: linear-gradient(90deg, var(--slate-500), var(--slate-400)); }
+.metric-card-accent.go { background: linear-gradient(90deg, var(--approve), #34d399); }
+.metric-card-accent.refer { background: linear-gradient(90deg, var(--escalate), #fbbf24); }
+.metric-card-accent.no-go { background: linear-gradient(90deg, var(--reject), #f87171); }
+.metric-card-accent.neutral { background: linear-gradient(90deg, #9ca3af, #d1d5db); }
 
 /* ── Decision Badge ── */
 .decision-badge {
@@ -123,9 +108,9 @@ body {
   letter-spacing: 0.03em;
   color: white;
 }
-.decision-badge.go { background: linear-gradient(135deg, var(--green-600), var(--green-500)); }
-.decision-badge.no_go { background: linear-gradient(135deg, var(--rose-600), var(--rose-500)); }
-.decision-badge.refer { background: linear-gradient(135deg, var(--amber-600), var(--amber-500)); }
+.decision-badge.go { background: linear-gradient(135deg, var(--approve), #34d399); }
+.decision-badge.no_go { background: linear-gradient(135deg, var(--reject), #f87171); }
+.decision-badge.refer { background: linear-gradient(135deg, var(--escalate), #fbbf24); }
 
 /* ── Status Badge ── */
 .status-badge {
@@ -139,16 +124,16 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.status-badge.pass { background: var(--green-50); color: var(--green-700); }
-.status-badge.fail { background: var(--rose-50); color: var(--rose-700); }
-.status-badge.warning { background: var(--amber-50); color: var(--amber-700); }
+.status-badge.pass { background: rgba(5,150,105,0.08); color: var(--approve); }
+.status-badge.fail { background: rgba(220,38,38,0.08); color: var(--reject); }
+.status-badge.warning { background: rgba(217,119,6,0.08); color: var(--escalate); }
 
 /* ── Confidence Bar ── */
 .confidence-bar {
   height: 8px;
   border-radius: 9999px;
   overflow: hidden;
-  background: var(--slate-100);
+  background: #f3f4f6;
 }
 .confidence-bar-fill {
   height: 100%;
@@ -158,25 +143,25 @@ body {
 
 /* ── Pipeline Step ── */
 .pipeline-step {
-  border-left: 4px solid var(--slate-200);
+  border-left: 4px solid var(--border);
   padding: 0.75rem 1rem;
   margin: 0.5rem 0;
   border-radius: 0 0.5rem 0.5rem 0;
-  background: var(--slate-50);
+  background: var(--bg-secondary);
   font-size: 0.875rem;
   transition: all 0.3s ease;
 }
-.pipeline-step.active { border-color: var(--indigo-500); background: var(--indigo-50); }
-.pipeline-step.done { border-color: var(--green-500); background: var(--green-50); }
-.pipeline-step.intake { border-color: var(--orange-500); }
-.pipeline-step.identity { border-color: var(--rose-500); }
-.pipeline-step.validity { border-color: var(--indigo-500); }
-.pipeline-step.synthesis { border-color: var(--green-600); }
+.pipeline-step.active { border-color: var(--accent); background: rgba(255,143,0,0.05); }
+.pipeline-step.done { border-color: var(--approve); background: rgba(5,150,105,0.05); }
+.pipeline-step.intake { border-color: var(--accent); }
+.pipeline-step.identity { border-color: var(--accent-pink); }
+.pipeline-step.validity { border-color: var(--accent-purple); }
+.pipeline-step.synthesis { border-color: var(--approve); }
 
 /* ── Risk Flag ── */
 .risk-flag {
-  background: var(--amber-50);
-  border-left: 4px solid var(--amber-500);
+  background: rgba(217,119,6,0.06);
+  border-left: 4px solid var(--escalate);
   padding: 0.625rem 0.875rem;
   margin: 0.375rem 0;
   border-radius: 0 0.5rem 0.5rem 0;
@@ -192,11 +177,11 @@ body {
   border-radius: 9999px;
   font-size: 0.68rem;
   font-weight: 600;
-  border: 1px solid rgba(79,70,229,0.15);
+  border: 1px solid rgba(255,143,0,0.15);
 }
-.agent-tag.intake { background: var(--orange-50); color: var(--orange-600); border-color: rgba(249,115,22,0.15); }
-.agent-tag.identity { background: var(--rose-50); color: var(--rose-600); border-color: rgba(225,29,72,0.15); }
-.agent-tag.validity { background: var(--indigo-50); color: var(--indigo-600); border-color: rgba(79,70,229,0.15); }
+.agent-tag.intake { background: rgba(255,143,0,0.06); color: var(--accent); border-color: rgba(255,143,0,0.2); }
+.agent-tag.identity { background: rgba(211,20,90,0.06); color: var(--accent-pink); border-color: rgba(211,20,90,0.2); }
+.agent-tag.validity { background: rgba(114,4,185,0.06); color: var(--accent-purple); border-color: rgba(114,4,185,0.2); }
 
 /* ── Radial Progress ── */
 .radial-progress {
@@ -216,12 +201,12 @@ body {
 }
 .radial-progress .track {
   fill: none;
-  stroke: var(--slate-100);
+  stroke: #f3f4f6;
   stroke-width: var(--stroke);
 }
 .radial-progress .fill {
   fill: none;
-  stroke: var(--indigo-600);
+  stroke: var(--accent);
   stroke-width: var(--stroke);
   stroke-linecap: round;
   transition: stroke-dashoffset 1s ease-out;
@@ -238,9 +223,9 @@ body {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
-@keyframes pulseIndigo {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(79,70,229,0.3); }
-  50% { box-shadow: 0 0 0 8px rgba(79,70,229,0); }
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,143,0,0.15); }
+  50% { box-shadow: 0 0 0 8px rgba(255,143,0,0); }
 }
 @keyframes signalReveal {
   from { opacity: 0; transform: translateX(-10px); }
@@ -250,8 +235,8 @@ body {
 .animate-fadeSlideUp {
   animation: fadeSlideUp 0.6s ease-out both;
 }
-.animate-pulseIndigo {
-  animation: pulseIndigo 2s ease-in-out infinite;
+.animate-glowPulse {
+  animation: glowPulse 2s ease-in-out infinite;
 }
 .animate-signalReveal {
   animation: signalReveal 0.5s ease-out both;
